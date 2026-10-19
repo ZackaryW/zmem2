@@ -168,3 +168,4 @@ zmem/zmem-cache databases, runtimes, and Python extensions are not migrated or
 modified. Roll back by selecting the old installation and its unchanged data.
 
 See [development](docs/development.md) for source ownership and dependency choices.
+See [verification](docs/verification.md) for measured behavior and platform coverage.

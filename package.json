@@ -27,8 +27,9 @@
     "test": "npm run build && node --test dist/tests/*.test.js",
     "start": "node dist/src/cli/main.js",
     "prepack": "npm run build",
-    "format": "prettier --write src tests README.md docs package.json tsconfig.json",
-    "format:check": "prettier --check src tests README.md docs package.json tsconfig.json"
+    "format": "prettier --write src tests scripts README.md docs package.json tsconfig.json .github",
+    "format:check": "prettier --check src tests scripts README.md docs package.json tsconfig.json .github",
+    "bench": "npm run build && node scripts/benchmark.mjs"
   },
   "dependencies": {
     "es-module-lexer": "3.0.4",
