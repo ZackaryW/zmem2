@@ -7,6 +7,15 @@
   "engines": {
     "node": "^24.0.0 || ^26.0.0"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "bin": {
+    "zmem": "dist/src/cli/main.js"
+  },
   "files": [
     "dist/src",
     "README.md",
@@ -16,6 +25,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
+    "start": "node dist/src/cli/main.js",
     "prepack": "npm run build",
     "format": "prettier --write src tests README.md docs package.json tsconfig.json",
     "format:check": "prettier --check src tests README.md docs package.json tsconfig.json"
