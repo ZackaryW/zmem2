@@ -46,3 +46,15 @@ export function fixture() {
     clean: () => rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
   };
 }
+
+export function extension(repo: string, manifest: unknown, code?: string) {
+  const root = join(repo, '.zmem', 'extensions', 'example');
+  mkdirSync(root, { recursive: true });
+  writeFileSync(join(root, 'extension.yaml'), stringify(manifest));
+  if (code) writeFileSync(join(root, 'extension.mjs'), code);
+  writeFileSync(
+    join(repo, '.zmem', 'config.yaml'),
+    stringify({ extensions: [{ path: 'extensions/example' }] }),
+  );
+  return root;
+}
