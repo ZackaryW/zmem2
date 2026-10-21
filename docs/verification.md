@@ -196,3 +196,53 @@ The pilot branch contains `LARGE-PILOT.md`, `evidence/large-pilot.json` and repe
 Python/memory verification scripts. Raw commands, all proposal validations,
 transition logs and configuration backups remain under
 `~/.zmem-pilots/test-pilot/evidence/large-*`.
+
+## 64-commit startup performance verification
+
+Change `improve-index-startup-performance` uses the accepted 64-commit startup
+window and a 90-second default worker deadline. Complete compatible memory extends
+to descendant heads; explicit attention and 500/400 preview-check defaults remain
+available. Git metadata is batched in groups of at most 64 with a bounded cache,
+and private pinned selection plans are reused across replacement workers.
+
+All 75 tests passed on Windows Node 26.8.2. All 23 focused startup/Git/history-plan
+and background tests also passed on Windows Node 24.22.0. Build/typecheck,
+formatting, and strict validation of this change and both reconciled prior changes
+passed. Tests cover exact 64-commit CLI startup, configured/explicit limits,
+complete-base extension, old-target effects, merge and Unicode decoding, bounded
+metadata process counts, plan corruption/budgets/reuse and staging cleanup.
+
+The lifecycle run exposed a stale private building claim during timeout recovery.
+A deterministic regression now verifies that the current queue owner reclaims
+private claims even when their recorded PID is live, while preserving public
+claims. Real watchdog timeout/retry, supervisor recovery and stop/resume tests
+passed after that fix.
+
+The installed package built from `8692093` was checked against build bytes and
+run on a fresh clone/home at the same 546-commit fixture head
+`861a23c0fc7a0c63b1a625f9f4aa88b66a129d86`. No timeout override was needed:
+
+| Operation                                    | Earlier pilot                                          | New installed run                                         |
+| -------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| Initial foreground response                  | 35.62 s / 400 commits                                  | 2.59 s / 64 commits                                       |
+| Full background completion                   | Default failed; recovery about 79.8 s at 90 s deadline | 27.43 s at new 90 s default; no retries                   |
+| Warm full sync                               | 0.486 s / zero computations                            | 0.462 s / zero computations                               |
+| One new cancellation after complete indexing | 16.93 s with explicit full attention                   | 3.15 s with default attention; one commit/effect computed |
+
+These are single-run Windows observations. Initial-window timings compare
+different workloads intentionally; the result is not a claim that identical
+400-commit computation became thirteen times faster. Backfill retained the same
+256 / 256 / 34 segmentation. All 542 entries were present; the new cancellation
+left 541 valid entries, preserved the original snapshot, and subsequent warm sync
+computed nothing. The largest pack was 2,426,823 bytes. All three worker PIDs used
+the same selection-plan checksum; staging was reclaimed and the test service was
+stopped. No Linux/macOS runtime execution was added by this run.
+
+Raw records and the summary are retained at
+`~/.zmem-pilots/test-pilot/performance-64-e1636e6a/evidence/`. The harness is
+`~/.zmem-pilots/test-pilot/run-performance-64.mjs`; the original pilot branch retains
+its baseline and new comparison. The isolated package was updated; the global
+legacy executable and original user configuration were preserved. Two installed
+query-skill references were backed up under
+`~/.codex/skill-backups/zmem-performance-64-06b119574e104659b5852d8dfc45fa5c/`,
+updated to source/package defaults, hash-compared and validated.
