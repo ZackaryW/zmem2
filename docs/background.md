@@ -32,3 +32,16 @@ staging. Old foreground snapshots remain usable throughout construction.
 Session-bound, nondeterministic extension surfaces are ineligible for detached
 backfill because replacement workers cannot reproduce their evaluation identity.
 Foreground indexing remains available for those surfaces.
+
+The detached supervisor starts on demand using the current Node executable and
+packaged worker scripts, with hidden windows and no inherited terminal handles.
+Each worker has an independent watchdog outside its computation thread. It asks
+computation to stop at the deadline, then terminates its process after the grace
+period if necessary. This also prevents a stuck extension from blocking timeout
+handling. Worker ownership is checked during computation and publication.
+
+The supervisor retains a running target's slot across sequential segment workers;
+other repositories can use the second slot. Completed/paused/cancelled targets
+release capacity. Idle shutdown and admission coordinate through the same durable
+database so a request cannot be lost during shutdown. Reopening a paused job or
+starting a stopped service does not implicitly resume paused targets.

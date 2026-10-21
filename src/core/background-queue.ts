@@ -189,7 +189,17 @@ export class BackgroundQueue {
       db.prepare('UPDATE service SET token=NULL,pid=NULL WHERE token=?').run(token);
     });
   }
-  dispatch(supervisor: string): BackgroundJob | undefined {
+  releaseIfIdle(token: string) {
+    return this.transaction((db) => {
+      const s = this.service(db);
+      if (s.token !== token) return true;
+      if (s.enabled && this.jobs(db).some((j) => j.state === 'queued' || j.state === 'running'))
+        return false;
+      db.prepare('UPDATE service SET token=NULL,pid=NULL WHERE token=?').run(token);
+      return true;
+    });
+  }
+  dispatch(supervisor: string, excluded: string[] = []): BackgroundJob | undefined {
     return this.transaction((db) => {
       const s = this.service(db);
       if (!s.enabled || s.token !== supervisor) return undefined;
@@ -205,7 +215,13 @@ export class BackgroundQueue {
         job.error = 'interrupted supervisor';
         this.save(db, job);
       }
-      let job = jobs.find((j) => j.state === 'running' && j.supervisor === supervisor && !j.token);
+      let job = jobs.find(
+        (j) =>
+          j.state === 'running' &&
+          j.supervisor === supervisor &&
+          !j.token &&
+          !excluded.includes(j.id),
+      );
       if (!job) {
         if (jobs.filter((j) => j.state === 'running' || processAlive(j.pid)).length >= 2)
           return undefined;
@@ -233,6 +249,15 @@ export class BackgroundQueue {
       const job = this.jobs(db).find((j) => j.id === id);
       if (job?.token === token && job.state === 'running') {
         job.pid = pid;
+        this.save(db, job);
+      }
+    });
+  }
+  clearWorker(id: string, pid: number) {
+    this.transaction((db) => {
+      const job = this.jobs(db).find((j) => j.id === id);
+      if (job?.pid === pid) {
+        job.pid = null;
         this.save(db, job);
       }
     });

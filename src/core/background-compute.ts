@@ -32,11 +32,19 @@ function directoryBytes(path: string): number {
   }, 0);
 }
 /** One replaceable worker invocation, with all computation private until complete. */
-export async function computeBackfillSegment(home: string, id: string, token: string) {
+export async function computeBackfillSegment(
+  home: string,
+  id: string,
+  token: string,
+  cancelled: () => boolean = () => false,
+) {
   const queue = new BackgroundQueue(home),
     job = queue.get(id);
   if (!job) throw new MemoryError('invalid_input', 'unknown backfill job');
-  const guarded = <T>(work: () => T) => queue.guarded(id, token, work);
+  const guarded = <T>(work: () => T) => {
+    if (cancelled()) throw new MemoryError('interrupted', 'worker deadline or stop requested');
+    return queue.guarded(id, token, work);
+  };
   guarded(() => {});
   const destination = new MemoryEngine(job.target.path, { home });
   if (
