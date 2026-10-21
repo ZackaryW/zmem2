@@ -7,6 +7,8 @@ TypeScript/Node engine.
 For agent use, start with the [short usage guide](docs/agents.md). The package
 ships focused skills for querying memory, authoring commits, and designing
 extensions, with setup and recovery details linked only where needed.
+Agents should initialize a missing repository index when memory is needed,
+unless the user has explicitly disabled automatic bootstrap.
 
 ## Build and install
 

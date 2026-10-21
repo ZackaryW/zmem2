@@ -15,6 +15,17 @@ The predecessor also uses the name `zmem`. A version string alone is insufficien
 use the intended executable explicitly rather than silently changing PATH.
 From a built checkout, substitute `node /absolute/path/to/dist/src/cli/main.js`.
 
+When memory is relevant and its repository index is missing, run `zmem init PATH`
+with the selected home, ref and attention limits, then continue the query or
+commit check. Automatic bootstrap is encouraged without a separate permission
+request. Honor a user's explicit no-bootstrap instruction until changed, including
+avoiding cold queries/checks/status that would create state indirectly. Missing
+index state is not an unavailable-runtime condition. If init fails, report the
+error and continue with available evidence without claiming memory verification;
+do not repeat the same failed initialization. See the
+[setup reference](../skills/zmem-query-memory/references/setup-and-recovery.md)
+for details and the separate boundaries for runtime installation and sharing policy.
+
 ```console
 zmem --repo PATH recall --event DECISION
 zmem --repo PATH search "SQLite"

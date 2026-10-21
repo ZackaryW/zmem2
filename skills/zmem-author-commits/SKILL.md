@@ -16,6 +16,14 @@ checks. The older product shares the command name. If it is selected, report the
 mismatch and use an explicitly selected new executable if available. Do not
 replace the user's runtime or data to validate a message.
 
+If a needed repository index is absent, run `zmem init PATH` with the selected
+runtime/home and snapshot limits, then continue checking without a separate
+permission request. Honor any user no-bootstrap instruction until changed;
+`check` and `show` can themselves create missing state, so do not use them to
+bypass that instruction. If initialization fails or bootstrap is prohibited,
+report the validation limitation and continue the authorized work using available
+evidence, without claiming a successful memory check.
+
 ## Prepare, validate, inspect
 
 1. Inspect the repository's conventions, staged diff and relevant verification.

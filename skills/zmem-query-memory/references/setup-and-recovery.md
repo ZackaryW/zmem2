@@ -1,10 +1,30 @@
 # Setup and recovery
 
-Use this reference for requested lifecycle work or diagnosing availability, not
+Use this reference for automatic bootstrap, requested lifecycle work or diagnosing availability, not
 as mandatory steps before every query. Confirm the selected TypeScript CLI with
 its executable location and `--help`; preserve the user's chosen `--home`.
 
 ## Initialize and synchronize
+
+When a relevant memory operation finds no repository index, initialize it and
+resume the operation by default; do not stop merely because the index is absent
+or ask for separate bootstrap approval. Preserve the selected executable, home,
+ref and attention limits. Reuse an existing index normally instead of running
+init before every query. No commits yet means setup succeeds with no segment;
+wait for actual history rather than repeatedly trying to build an empty index.
+
+An explicit user no-bootstrap instruction takes precedence and persists until
+changed. Check filesystem presence without invoking the engine when needed:
+even `status` constructs catalogs, and queries/checks can compute missing state.
+There is no read-only/no-bootstrap CLI switch. If the requested operation would
+create the prohibited state, use Git/current files and disclose the missing
+memory verification. An index directory alone does not prove snapshot coverage.
+
+If init fails, report the concrete error and use available evidence; retry only
+after its cause changes. Missing runtime, invalid config, unavailable Git inputs
+and failed hooks are not cured by repeated initialization. Automatic bootstrap
+does not authorize runtime installation/replacement, predecessor migration,
+extension trust, separate-clone association, policy changes or hook retries.
 
 ```console
 zmem init PATH

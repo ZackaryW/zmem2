@@ -19,6 +19,20 @@ or version alone does not identify the engine. If the selected binary is the old
 Python/service product, report that mismatch and use an explicitly selected new
 executable if available. Do not replace PATH or migrate data to answer a query.
 
+## Bootstrap missing memory
+
+When memory is relevant and the repository index is missing, run `zmem init PATH`
+with the selected runtime, home and snapshot/attention options, then continue the
+query. This is encouraged by default and needs no separate permission request.
+Read [setup-and-recovery.md](references/setup-and-recovery.md) for this path.
+A missing index alone is not a reason to skip memory and fall back to Git.
+
+Honor an explicit user instruction not to bootstrap until the user changes it.
+Do not evade it through a cold query, check or status call: these can create
+state too. Use available repository evidence when the operation would bootstrap,
+and explain that computed memory was not checked. If init fails, report its
+error and continue with available evidence; do not loop on the same failure.
+
 ## Retrieve and interpret
 
 1. Identify the repository and intended snapshot (`--ref` when different from
@@ -42,7 +56,7 @@ policy, grant extension trust, associate repositories, or retry external hooks.
 If the engine is unavailable, say so and continue with current repository/Git
 evidence without claiming memory validation.
 
-For requested initialization, promotion diagnosis, eviction, or recovery, read
+For automatic or requested initialization, promotion diagnosis, eviction, or recovery, read
 [setup-and-recovery.md](references/setup-and-recovery.md). Ordinary retrieval does
 not require that reference. Commit authoring and extension development have their
 own skills: `zmem-author-commits` and `zmem-design-extensions`.
