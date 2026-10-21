@@ -53,9 +53,12 @@ zmem sync ./my-repo
 zmem status ./my-repo
 ```
 
-`init` registers the repository, creates `.zmem/config.yaml` if absent, adds
-`/.zmem/index/` to the root `.gitignore`, and builds the initial computed index.
-It preserves existing configuration and ignore rules and can be repeated.
+`init` registers the repository, creates `.zmem/config.yaml` if absent, ensures
+`/index/` in `.zmem/.gitignore`, and builds the initial computed index.
+It preserves existing configuration and nested ignore rules and can be repeated.
+The repository's root `.gitignore` is neither created nor changed. Existing root
+rules from earlier versions remain in place; they can be removed after verifying
+the nested rule if they were added solely for zmem.
 In a repository without commits it completes setup; `sync` builds the index
 after the first commit. Configuration and extensions remain trackable.
 

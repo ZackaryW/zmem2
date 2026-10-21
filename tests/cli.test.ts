@@ -79,6 +79,8 @@ test('init sets up a trackable repository and sync incrementally reuses its comp
     writeFileSync(join(f.repo, '.zmem', 'config.yaml'), existingConfig);
     const previousIgnore = 'node_modules/\r\n# keep this comment';
     writeFileSync(join(f.repo, '.gitignore'), previousIgnore);
+    const nestedIgnore = '# local scratch\r\nscratch/\r\n# preserve this too';
+    writeFileSync(join(f.repo, '.zmem', '.gitignore'), nestedIgnore);
     const call = (command: string, ...extra: string[]) =>
       spawnSync(
         process.execPath,
@@ -88,14 +90,22 @@ test('init sets up a trackable repository and sync incrementally reuses its comp
     const initial = call('init');
     assert.equal(initial.status, 0, initial.stderr);
     assert.equal(JSON.parse(initial.stdout).metrics.computed_commits, 1);
-    const expectedIgnore = `${previousIgnore}\r\n/.zmem/index/\r\n`;
-    assert.equal(readFileSync(join(f.repo, '.gitignore'), 'utf8'), expectedIgnore);
+    const expectedIgnore = `${nestedIgnore}\r\n/index/\r\n`;
+    assert.equal(readFileSync(join(f.repo, '.gitignore'), 'utf8'), previousIgnore);
+    assert.equal(readFileSync(join(f.repo, '.zmem', '.gitignore'), 'utf8'), expectedIgnore);
     assert.equal(readFileSync(join(f.repo, '.zmem', 'config.yaml'), 'utf8'), existingConfig);
     assert.ok(f.git('check-ignore', '.zmem/index/example.sqlite'));
+    for (const platform of ['win32-x64', 'linux-x64', 'darwin-arm64'])
+      assert.match(
+        f.git('check-ignore', '-v', `.zmem/index/${platform}/catalog.sqlite`),
+        /^\.zmem\/\.gitignore:\d+:\/index\//,
+      );
+    assert.throws(() => f.git('check-ignore', '.zmem/.gitignore'));
     assert.throws(() => f.git('check-ignore', '.zmem/config.yaml'));
     assert.throws(() => f.git('check-ignore', '.zmem/extensions/example/extension.mjs'));
     assert.equal(call('init').status, 0);
-    assert.equal(readFileSync(join(f.repo, '.gitignore'), 'utf8'), expectedIgnore);
+    assert.equal(readFileSync(join(f.repo, '.gitignore'), 'utf8'), previousIgnore);
+    assert.equal(readFileSync(join(f.repo, '.zmem', '.gitignore'), 'utf8'), expectedIgnore);
     const warm = call('sync');
     assert.equal(warm.status, 0, warm.stderr);
     assert.equal(JSON.parse(warm.stdout).metrics.expansions, 0);
@@ -128,7 +138,8 @@ test('CLI init supports an unborn repository and creates the default config with
     assert.equal(JSON.parse(initial.stdout).segment, null);
     assert.equal(JSON.parse(initial.stdout).metrics.computed_commits, 0);
     assert.equal(readFileSync(join(f.repo, '.zmem', 'config.yaml'), 'utf8'), 'extensions: []\n');
-    assert.equal(existsSync(join(f.repo, '.gitignore')), true);
+    assert.equal(existsSync(join(f.repo, '.gitignore')), false);
+    assert.equal(readFileSync(join(f.repo, '.zmem', '.gitignore'), 'utf8'), '/index/\n');
     assert.throws(() => f.git('rev-parse', '--verify', 'HEAD'));
     f.commit('feat: first\n\nzmem(DECISION): first');
     const synced = call('sync');
@@ -136,5 +147,28 @@ test('CLI init supports an unborn repository and creates the default config with
     assert.equal(JSON.parse(synced.stdout).metrics.computed_commits, 1);
   } finally {
     f.clean();
+  }
+});
+
+test('init preserves legacy root rules and existing equivalent nested index rules', async () => {
+  for (const rule of ['/index/', 'index/']) {
+    const f = fixture();
+    try {
+      const rootIgnore = '# user rules\n/.zmem/index/\nkeep/';
+      const nestedIgnore = `# local rules\n${rule}\nscratch/`;
+      writeFileSync(join(f.repo, '.gitignore'), rootIgnore);
+      mkdirSync(join(f.repo, '.zmem'), { recursive: true });
+      writeFileSync(join(f.repo, '.zmem', '.gitignore'), nestedIgnore);
+      const engine = new MemoryEngine(f.repo, { home: f.home });
+      await engine.init();
+      await engine.init();
+      assert.equal(readFileSync(join(f.repo, '.gitignore'), 'utf8'), rootIgnore);
+      assert.equal(readFileSync(join(f.repo, '.zmem', '.gitignore'), 'utf8'), nestedIgnore);
+      assert.ok(f.git('check-ignore', '.zmem/index/linux-x64/catalog.sqlite'));
+      assert.throws(() => f.git('check-ignore', '.zmem/config.yaml'));
+      assert.throws(() => f.git('check-ignore', '.zmem/extensions/example/extension.mjs'));
+    } finally {
+      f.clean();
+    }
   }
 });

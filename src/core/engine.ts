@@ -141,15 +141,11 @@ export class MemoryEngine {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       }
     }
-    const ignore = join(this.repo.root, '.gitignore');
+    const ignore = join(this.repo.root, '.zmem', '.gitignore');
     const content = existsSync(ignore) ? readFileSync(ignore, 'utf8') : '';
-    if (
-      !content
-        .split(/\r?\n/)
-        .some((line) => ['/.zmem/index/', '.zmem/index/'].includes(line.trim()))
-    ) {
+    if (!content.split(/\r?\n/).some((line) => ['/index/', 'index/'].includes(line.trim()))) {
       const eol = content.includes('\r\n') ? '\r\n' : '\n';
-      appendFileSync(ignore, `${content && !content.endsWith('\n') ? eol : ''}/.zmem/index/${eol}`);
+      appendFileSync(ignore, `${content && !content.endsWith('\n') ? eol : ''}/index/${eol}`);
     }
     const pack = !options.ref && this.repo.unborn() ? null : await this.sync(options);
     return {

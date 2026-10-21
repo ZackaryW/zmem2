@@ -12,11 +12,14 @@ zmem sync PATH
 zmem status PATH
 ```
 
-`init` registers the location, creates missing `.zmem/config.yaml`, adds
-`/.zmem/index/` to the repository's root `.gitignore`, and computes initial memory.
-It preserves existing configuration and ignore lines. An unborn repository is
+`init` registers the location, creates missing `.zmem/config.yaml`, ensures
+`/index/` in `.zmem/.gitignore`, and computes initial memory. It preserves existing
+configuration and nested ignore content/newline style, recognizing `/index/` and
+`index/` without duplication. It neither creates nor changes the root `.gitignore`.
+Legacy root rules remain untouched; remove a known generated rule only as part of
+a requested migration after verifying the nested rule. An unborn repository is
 registered without a segment; sync after its first commit. `index` aliases sync.
-Configuration and extension sources stay trackable.
+Configuration, extension sources and `.zmem/.gitignore` stay trackable.
 
 Local generated state lives under `.zmem/index/PLATFORM-ARCH`. User policy is
 `~/.zmem/config.yaml`, shared state is `~/.zmem/v2/`, and reusable extension
