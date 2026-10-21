@@ -93,3 +93,31 @@ DECISION entries record effective extension fingerprinting and the approved
 stable, compatible, two-location promotion rule. Ordinary implementation and
 process-reporting commits need no memory annotation. Nothing was pushed or
 archived; archive-only temporary-state cleanup has not run.
+
+## Nested ignore refinement and pilot rollout
+
+Checkpoint `338b158` reconciles the init proposal/design/specification with
+`.zmem/.gitignore` containing `/index/`. Root ignore files remain absent or
+byte-for-byte unchanged. The five focused CLI tests passed on Windows Node
+26.8.2 in the working tree and Node 24.22.0 in an exported staged snapshot after
+a clean install/build. Coverage includes unborn and committed repositories,
+repeat init, preserved custom content/newlines and equivalent rules, legacy root
+rules, Git ignore provenance for three platform paths, and trackable config and
+extension sources. These path checks do not constitute execution on other hosts.
+Formatting, skill validation and strict OpenSpec validation also passed.
+
+The rebuilt package was installed in `~/.zmem-pilots/test-pilot/runtime`; its
+engine matched the build. The installed query-skill setup reference was backed
+up, updated, validated and compared with the source. The pilot's init created
+the nested rule without changing root bytes. After checking Git provenance,
+only the known generated root rule was removed. Pilot commit `a1530fe` records
+that migration and its documentation. No global runtime was replaced.
+
+Repeated init preserved both ignore files. Init and warm sync computed zero
+commits, expansions and effects; recall before/after was identical. After the
+migration commit, both memory entries remained unchanged and warm sync again
+computed nothing. Git confirmed that config, extension sources and the nested
+ignore file remained trackable. Evidence is retained under
+`~/.zmem-pilots/test-pilot/evidence/ignore-01` through `ignore-09` command records.
+Both source and pilot commit messages passed computed checks and post-commit
+inspection. Task 10.6 is complete; task 9.4 remains open.
