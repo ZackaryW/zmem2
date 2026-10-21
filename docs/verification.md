@@ -152,3 +152,47 @@ The global runtime and prior pilot repository were not replaced or modified.
 Full ancestry selection still scans Git history; very large repositories may
 require a longer worker deadline, with explicit bounded failure if no sealed
 progress is possible. The prior rebuild's platform task 9.4 remains open.
+
+## Large-history pilot and default timeout limitation
+
+A subsequent installed-package run of checkpoint `98185c3` used the existing
+Python `test-pilot` repository on Windows Node 26.8.2. Its dedicated
+`pilot-large-backfill` branch added 540 synthetic annotated commits and 597,000
+verified transactions (15,991,295 canonical CSV bytes). The measured fixture head
+`861a23c0fc7a0c63b1a625f9f4aa88b66a129d86` contains 546 commits and 542 entries.
+All six Python tests and exact batch totals passed. CSV content is fixture data;
+zmem indexes annotations and changed paths, so this is not a source-parser benchmark.
+
+Default foreground init took 35.62 seconds and returned a 400-entry partial view.
+A duplicate took 0.52 seconds and returned `already_pending`. All three default
+30-second worker attempts expired before sealing the first segment. The job stayed
+failed, foreground reads remained available, and automatic admission reported
+`job_failed`. **Default large-history backfill did not pass this pilot.**
+
+Explicit resume with only the isolated worker timeout raised to 90 seconds
+completed in about 79.8 seconds. Three separate workers sealed 256 / 256 / 34
+commits; all 542 entries and synthetic origins matched. Old foreground views
+remained available during staging, and successful publication removed staging.
+The largest local pack was 2,492,102 bytes, below the 16 MiB bound. Warm full sync
+took 0.486 seconds with zero computations. The original configuration was restored
+byte-for-byte; the stable boundary was unchanged and synthetic commits were not shared.
+
+Two fresh clones exercised twelve large-history targets: two active plus eight
+waiting were accepted, then two admissions returned `queue_full`. Duplicate
+recognition at capacity, opt-out, stop/start, explicit resume, cancellation and
+publication fencing passed. One-commit foreground init plus admission took
+0.577–0.646 seconds. All queue-test jobs were cancelled and their service stopped.
+
+A later CANCEL targeting the first synthetic entry computed one new commit and
+one effect without replaying existing segments. It produced 541 valid entries,
+542 including invalid entries, and preserved the earlier pinned snapshot. However,
+that explicit full incremental sync still took 16.93 seconds. A 32-commit initial
+window took 3.00 seconds in a separate bounded experiment. Follow-up priorities are
+a smaller initial foreground window, batched Git history reads and eliminating
+repeated full-history selection between workers. This test changed no engine code
+or production defaults, and provides no new Linux/macOS execution evidence.
+
+The pilot branch contains `LARGE-PILOT.md`, `evidence/large-pilot.json` and repeatable
+Python/memory verification scripts. Raw commands, all proposal validations,
+transition logs and configuration backups remain under
+`~/.zmem-pilots/test-pilot/evidence/large-*`.

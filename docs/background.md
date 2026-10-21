@@ -68,3 +68,11 @@ resuming them. `--no-background` disables admission for a foreground call, not
 foreground computation or existing background work. Policy opt-out is available
 in user and repository configuration. Automatic admissions never resume paused,
 cancelled or failed targets.
+
+A Windows pilot with 546 commits exceeded the default 30-second deadline before
+its first 256-commit segment sealed. Explicit resume with a 90-second deadline
+completed all three segments; the pilot configuration was then restored. See
+[verification evidence](verification.md#large-history-pilot-and-default-timeout-limitation).
+The default foreground window also took 35.6 seconds in that run. Detached
+execution bounds worker lifetime; it does not by itself guarantee fast initial
+responses or sufficient time to seal a segment.
