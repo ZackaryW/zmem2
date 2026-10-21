@@ -3,6 +3,7 @@ import { existsSync, readdirSync, statSync, rmSync } from 'node:fs';
 import { MemoryEngine } from './engine.js';
 import { MemoryError, VERSION, identity, json } from './contracts.js';
 import { BackgroundQueue, type BackfillTarget } from './background-queue.js';
+import { historyPlan } from './history-plan.js';
 
 export function backfillTarget(engine: MemoryEngine, ref?: string): BackfillTarget {
   const request = engine.computation({ ref, commitLimit: -1, nodeLimit: -1 });
@@ -56,8 +57,10 @@ export async function computeBackfillSegment(
     throw new MemoryError('incompatible', 'backfill inputs changed');
   const directory = join(destination.local.directory, 'backfill', id);
   const stage = new MemoryEngine(job.target.path, { home, localDirectory: directory });
-  // Only this private computation catalog is resumable. Never reset public claims or hooks.
-  stage.local.db((db) => db.prepare("DELETE FROM claims WHERE state='failed'").run());
+  // The queue token, not a reusable OS PID, owns this private computation.
+  // A killed thread/process can leave a building claim whose PID is live again.
+  // Reclaim only this job's staging claims while holding current ownership.
+  guarded(() => stage.local.db((db) => db.prepare('DELETE FROM claims').run()));
   const request = stage.computation({ ref: job.target.head, commitLimit: -1, nodeLimit: -1 });
   const budget = destination.settings.user.background.max_staging_bytes;
   const checkBudget = (extra = 0) => {
@@ -99,6 +102,15 @@ export async function computeBackfillSegment(
     commitLimit: -1,
     nodeLimit: -1,
     preview: true,
+    selection: historyPlan(
+      stage.repo,
+      directory,
+      id,
+      job.target.head,
+      budget,
+      guarded,
+      checkBudget,
+    ),
     guard: () => {
       guarded(() => {});
       checkBudget();

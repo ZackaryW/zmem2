@@ -63,7 +63,7 @@ Two limits have different meanings:
 
 Use `--commit-limit N` and `--node-limit N` to broaden relevant coverage. Their
 environment equivalents are `ZMEM_COMMIT_LIMIT` and `ZMEM_NODE_LIMIT`; explicit
-flags win. `-1` disables one dimension. Reserve unbounded history for a request
+flags win. `-1` disables one dimension. With an explicit attention override, unspecified dimensions retain 500-commit / 400-node defaults; the configurable 64-commit startup policy applies only without attention overrides. Reserve unbounded history for a request
 that needs it, rather than treating it as the default query mode.
 
 ## Availability

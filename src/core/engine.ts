@@ -16,7 +16,9 @@ import {
   type Entry,
   type Attention,
   type Surface,
+  type Selection,
 } from './contracts.js';
+import { validFullSelection } from './history-plan.js';
 import { annotations } from './annotations.js';
 import { createSingleFlight } from '../utils/singleflight.js';
 
@@ -39,6 +41,8 @@ export interface IndexOptions {
   guard?: () => void;
   onSegment?: (pack: Pack) => boolean;
   beforeSegment?: (pack: Pack) => void;
+  /** Internal: validated pinned full-history headers from private worker staging. */
+  selection?: Selection;
 }
 class SegmentYield {
   constructor(readonly pack: Pack) {}
@@ -394,7 +398,17 @@ export class MemoryEngine {
             return rebuilt;
           }
         }
-        const selection = this.repo.select(options.ref ?? 'HEAD', commitLimit, nodeLimit, head);
+        if (
+          options.selection &&
+          (commitLimit !== -1 || nodeLimit !== -1 || !validFullSelection(options.selection, head))
+        )
+          throw new MemoryError(
+            'incompatible',
+            'prepared selection does not match full-history request',
+          );
+        const selection =
+          options.selection ??
+          this.repo.select(options.ref ?? 'HEAD', commitLimit, nodeLimit, head);
         const coverage = selection.commits.map((c) => c.oid);
         let base: Pack | undefined;
         let snapshot: Snapshot | undefined;

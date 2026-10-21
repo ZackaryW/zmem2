@@ -93,7 +93,7 @@ Results default to JSON. `--human` formats readable JSON. `--event`, `--scope`,
 Limits on returned results are separate from history attention: initial defaults are 64
 commits and 400 syntactically valid annotations. `--commit-limit` and `--node-limit`
 override these; `-1` disables one dimension. Environment equivalents are
-`ZMEM_COMMIT_LIMIT` and `ZMEM_NODE_LIMIT`. Selection never applies half a commit.
+`ZMEM_COMMIT_LIMIT` and `ZMEM_NODE_LIMIT`. Selection never applies half a commit. With an explicit attention override, unspecified dimensions retain 500-commit / 400-node defaults; the configurable 64-commit startup policy applies only without attention overrides.
 After a compatible full-history view is published, default queries reuse it.
 Explicit attention flags/environment settings continue to request bounded views.
 

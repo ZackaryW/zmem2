@@ -102,3 +102,18 @@ records while changed-path queries retain existing behavior. Tests compare
 multiline Unicode and unusual raw-message decoding with individual Git reads,
 preserve deterministic merge ordering, and require only two metadata processes
 for a 70-commit selection. This does not change computed-segment identities.
+
+Background workers persist their full pinned header selection in
+`backfill/JOB/selection.json`. Replacement workers validate the format, target,
+checksum and ancestry shape, then reuse it. Corrupt or incompatible planning data
+is rebuilt; oversized data fails within the staging budget. Plan publication is
+atomic and ownership-guarded, and successful target cleanup removes it together
+with private packs. Tests require one history selection across three sequential
+workers, including corruption recovery, budget refusal and staging reclamation.
+
+Private job recovery uses the current queue ownership token to reclaim staging
+computation claims. A terminated worker can leave a building claim whose OS PID
+has since been reused; PID liveness alone cannot block its replacement forever.
+The guarded reset is restricted to the job's private catalog and preserves public
+claims and hook receipts. A regression test verifies both reclamation and public
+claim preservation, alongside real watchdog retry exhaustion.
