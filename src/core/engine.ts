@@ -22,6 +22,8 @@ import { createSingleFlight } from '../utils/singleflight.js';
 
 export interface EngineOptions {
   home?: string;
+  /** Private construction catalog; never a foreground view. */
+  localDirectory?: string;
   associate?: string;
   trust?: boolean;
   fault?: (stage: string) => void;
@@ -33,6 +35,13 @@ export interface IndexOptions {
   observed?: string;
   force?: boolean;
   preview?: boolean;
+  /** Internal worker controls; yielding happens only after a deterministic seal. */
+  guard?: () => void;
+  onSegment?: (pack: Pack) => boolean;
+  beforeSegment?: (pack: Pack) => void;
+}
+class SegmentYield {
+  constructor(readonly pack: Pack) {}
 }
 export interface QueryOptions extends IndexOptions {
   event?: string[];
@@ -71,7 +80,8 @@ export class MemoryEngine {
     this.repo = new GitRepo(path);
     this.settings = configuration(this.repo.root, options.home);
     this.local = new Catalog(
-      join(this.repo.root, '.zmem', 'index', `${process.platform}-${process.arch}`),
+      options.localDirectory ??
+        join(this.repo.root, '.zmem', 'index', `${process.platform}-${process.arch}`),
     );
     const ignored = join(this.local.directory, '.gitignore');
     if (!existsSync(ignored)) writeFileSync(ignored, '*\n');
@@ -246,7 +256,7 @@ export class MemoryEngine {
       throw error;
     }
   }
-  private request(options: IndexOptions) {
+  computation(options: IndexOptions = {}) {
     const head = this.repo.resolve(options.ref);
     if (options.observed && options.observed !== head)
       throw new MemoryError('stale_ref', 'reference differs from observed commit');
@@ -265,7 +275,8 @@ export class MemoryEngine {
     return { head, selectedSurface, commitLimit, nodeLimit, policy, key };
   }
   async index(options: IndexOptions = {}): Promise<Pack> {
-    const { head, selectedSurface, commitLimit, nodeLimit, policy, key } = this.request(options);
+    const { head, selectedSurface, commitLimit, nodeLimit, policy, key } =
+      this.computation(options);
     return this.work.run(key, async () => {
       const known = this.local.view(key) ?? this.coordinator?.catalog.view(key);
       if (!options.force) {
@@ -482,7 +493,9 @@ export class MemoryEngine {
           };
           const publish = async () => {
             if (!chunk.length) return;
+            options.guard?.();
             const pack = makePack();
+            options.beforeSegment?.(pack);
             this.local.publish(pack, this.settings.user.segments.max_bytes, this.options.fault);
             if (!options.preview && this.coordinator) {
               try {
@@ -517,10 +530,13 @@ export class MemoryEngine {
             chunk = [];
             checkpoints = [];
             state.clearPending();
+            if (options.onSegment && !options.onSegment(pack) && prefix.length < coverage.length)
+              throw new SegmentYield(pack);
           };
           // New pages become readable after every publication without an overlay-chain walk.
           state.addReader((hash) => this.local.page(hash));
           for (const header of selection.commits.slice(prefix.length)) {
+            options.guard?.();
             if (chunk.length >= this.settings.user.segments.max_commits) await publish();
             const commit = this.repo.commit(header.oid);
             let checkpoint = state.checkpoint();
@@ -594,6 +610,7 @@ export class MemoryEngine {
           snapshot?.release();
         }
       } catch (error) {
+        if (error instanceof SegmentYield) return error.pack;
         failed = true;
         this.local.finishClaim(claimKey, String(error));
         if (centralClaim) this.coordinator!.catalog.finishClaim(centralClaim, String(error));
@@ -609,6 +626,70 @@ export class MemoryEngine {
   private resolvePack(id: string): Pack {
     const item = this.manifest(id);
     return item.catalog.load(id);
+  }
+  /** Copy a verified dependency closure without replaying handlers or exposing a view. */
+  copyComputed(
+    source: MemoryEngine,
+    id: string,
+    guard: <T>(work: () => T) => T = (work) => work(),
+    beforeCopy?: (pack: Pack) => void,
+  ) {
+    const snapshot = source.snapshot(id);
+    const copied: Pack[] = [],
+      seen = new Set<string>();
+    try {
+      const visit = (key: string) => {
+        if (seen.has(key)) return;
+        seen.add(key);
+        const pack = source.resolvePack(key);
+        for (const dep of pack.deps) visit(dep);
+        if (!this.local.row(key)?.resident) {
+          beforeCopy?.(pack);
+          guard(() => this.local.publish(pack, this.settings.user.segments.max_bytes));
+        }
+        copied.push(pack);
+      };
+      visit(id);
+      return copied;
+    } finally {
+      snapshot.release();
+    }
+  }
+  async publishBackfill(
+    source: MemoryEngine,
+    id: string,
+    ref: string,
+    event: string,
+    guard: <T>(work: () => T) => T,
+  ) {
+    const request = this.computation({ ref, commitLimit: -1, nodeLimit: -1 });
+    const staged = source.computation({ ref, commitLimit: -1, nodeLimit: -1 });
+    if (request.key !== staged.key || source.local.view(staged.key) !== id)
+      throw new MemoryError('incompatible', 'staging does not contain the complete requested view');
+    const packs = this.copyComputed(source, id, guard);
+    guard(() => this.local.setView(request.key, id));
+    guard(() => {});
+    await request.selectedSurface.load();
+    for (const pack of packs) {
+      const computed = source.local.db((db) =>
+        db.prepare('SELECT value FROM meta WHERE key=?').get(`background-computed:${pack.id}`),
+      );
+      if (computed && this.coordinator)
+        guard(() => {
+          this.coordinator!.observe(pack, this.registration.location, `${event}:${pack.id}`);
+          if (request.selectedSurface.shareable && this.coordinator!.eligible(this.repo, pack))
+            this.coordinator!.promote(this.repo, pack, this.local, (key) => this.resolvePack(key));
+        });
+      const ledger = this.coordinator?.catalog ?? this.local;
+      for (const [name, hook] of request.selectedSurface.hooks)
+        for (const oid of pack.commits) {
+          guard(() => {});
+          await ledger.hook(`${pack.repository}:${name}:${oid}`, () =>
+            hook(Object.freeze({ segment: pack.id, repository: pack.repository, head: oid })),
+          );
+        }
+    }
+    return packs.at(-1)!;
   }
   /** Repartition sealed checkpoints by copying calculated pages, never handlers. */
   compact(id: string): Pack {
@@ -857,7 +938,7 @@ export class MemoryEngine {
   }
   async read(options: IndexOptions = {}): Promise<Snapshot> {
     if (!options.force) {
-      const { key } = this.request(options);
+      const { key } = this.computation(options);
       const known = this.local.view(key) ?? this.coordinator?.catalog.view(key);
       if (known)
         try {
