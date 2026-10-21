@@ -45,3 +45,26 @@ other repositories can use the second slot. Completed/paused/cancelled targets
 release capacity. Idle shutdown and admission coordinate through the same durable
 database so a request cannot be lost during shutdown. Reopening a paused job or
 starting a stopped service does not implicitly resume paused targets.
+
+## Foreground responses and control
+
+Normal CLI init/sync/index/recall/search/show/links attach `backfill` admission and
+`memory_coverage: { target_commit, complete, commits }`. Coverage describes the
+returned snapshot, not the queue. Failed admission preserves a successful
+foreground result. If dispatcher launch fails after durable admission, its job ID
+is retained and the reason says so; it can be inspected and dispatched later.
+
+Default foreground queries use an already published full-history view. Explicit
+attention flags or environment limits still select bounded history. Background
+targets always pin a concrete commit and full-history attention. Low-level library
+`MemoryEngine` calls remain computation-only; library callers can use exported
+`withBackfill` to attach the same admission behavior to completed real operations.
+Do not attach it to hypothetical checks.
+
+`zmem jobs`, `zmem backfill status` and `zmem service status` only observe control
+state. `backfill pause/resume/cancel JOB_ID` controls one durable target. `service
+stop` pauses pending/active targets; `service start` enables dispatch without
+resuming them. `--no-background` disables admission for a foreground call, not
+foreground computation or existing background work. Policy opt-out is available
+in user and repository configuration. Automatic admissions never resume paused,
+cancelled or failed targets.

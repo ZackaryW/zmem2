@@ -261,8 +261,25 @@ export class MemoryEngine {
     if (options.observed && options.observed !== head)
       throw new MemoryError('stale_ref', 'reference differs from observed commit');
     const selectedSurface = this.surface();
-    const commitLimit = options.commitLimit ?? Number(process.env.ZMEM_COMMIT_LIMIT ?? 500),
+    let commitLimit = options.commitLimit ?? Number(process.env.ZMEM_COMMIT_LIMIT ?? 500),
       nodeLimit = options.nodeLimit ?? Number(process.env.ZMEM_NODE_LIMIT ?? 400);
+    if (
+      options.commitLimit === undefined &&
+      options.nodeLimit === undefined &&
+      process.env.ZMEM_COMMIT_LIMIT === undefined &&
+      process.env.ZMEM_NODE_LIMIT === undefined
+    ) {
+      const fullKey = identity({
+        repository: this.registration.repository,
+        head,
+        surface: selectedSurface.id,
+        policy: identity({ version: VERSION, commitLimit: -1, nodeLimit: -1 }),
+      });
+      if (this.local.view(fullKey) || this.coordinator?.catalog.view(fullKey)) {
+        commitLimit = -1;
+        nodeLimit = -1;
+      }
+    }
     if ([commitLimit, nodeLimit].some((n) => !Number.isSafeInteger(n) || (n <= 0 && n !== -1)))
       throw new MemoryError('invalid_input', 'attention must be positive or -1');
     const policy = identity({ version: VERSION, commitLimit, nodeLimit });

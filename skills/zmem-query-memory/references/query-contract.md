@@ -57,7 +57,7 @@ Two limits have different meanings:
 
 - `truncated` describes matches omitted by the result `--limit`.
 - `attention.truncated` and `attention.reached` describe bounded history
-  selection. Defaults are 500 commits and 400 syntactically valid annotations,
+  selection. Initial defaults are 500 commits and 400 syntactically valid annotations,
   including supported effects and unsupported types. Selection keeps whole
   commits; ordinary prose does not become a node.
 
@@ -68,7 +68,15 @@ that needs it, rather than treating it as the default query mode.
 
 ## Availability
 
-The CLI runs a command and exits; no daemon startup or job polling is required.
+The CLI returns foreground results and automatically admits detached backfill;
+agents need not manually start a service or wait for background completion.
+Responses include `backfill.status`: accepted, already_pending, already_fulfilled,
+ineligible, queue_full or failed, with job/state/reason fields as applicable.
+`memory_coverage` reports the returned answer's target, completeness and commit
+count independently of scheduling. A default query can reuse a completed
+full-history view; explicit attention flags/environment limits retain their
+bounded meaning. No-bootstrap and no-background are distinct controls.
+
 A query can compute missing state, adopt shared results, or reconstruct evicted
 payloads. Compatible warm reads reuse computed outcomes. A failed reconstruction
 is an error, not an empty answer or permission to choose another snapshot.

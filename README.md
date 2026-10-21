@@ -67,12 +67,35 @@ after the first commit. Configuration and extensions remain trackable.
 `sync` checks compatible central coverage and computes uncovered local history.
 An unchanged repository reuses its completed result. `index` remains an alias.
 
+Successful init/sync/recall/search/show/links automatically request detached
+full-history backfill when needed. Responses include `backfill` admission status
+and `memory_coverage` separately from the returned result. One supervisor per user
+home runs at most two workers with eight waiting targets. Use `--no-background`
+to suppress admission for a call. Proposal checks do not schedule background work.
+
+```console
+zmem jobs
+zmem backfill status
+zmem backfill pause JOB_ID
+zmem backfill resume JOB_ID
+zmem backfill cancel JOB_ID
+zmem service status
+zmem service stop
+zmem service start
+```
+
+These status commands do not initialize indexes. Stop pauses active/queued work;
+start re-enables dispatch, and paused jobs require explicit resume. See
+[background backfill](docs/background.md) for deadlines, limits and recovery.
+
 Results default to JSON. `--human` formats readable JSON. `--event`, `--scope`,
 `--area`, `--since`, `--min-score`, and `--limit` filter recall/search results.
-Limits on returned results are separate from history attention: defaults are 500
+Limits on returned results are separate from history attention: initial defaults are 500
 commits and 400 syntactically valid annotations. `--commit-limit` and `--node-limit`
 override these; `-1` disables one dimension. Environment equivalents are
 `ZMEM_COMMIT_LIMIT` and `ZMEM_NODE_LIMIT`. Selection never applies half a commit.
+After a compatible full-history view is published, default queries reuse it.
+Explicit attention flags/environment settings continue to request bounded views.
 
 DECAY multiplies a reachable entry's score; CANCEL invalidates a reachable
 DECISION; META patches declared metadata over a complete ancestry range. Effects

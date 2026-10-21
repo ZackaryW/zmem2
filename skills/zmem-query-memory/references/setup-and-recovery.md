@@ -41,6 +41,45 @@ a requested migration after verifying the nested rule. An unborn repository is
 registered without a segment; sync after its first commit. `index` aliases sync.
 Configuration, extension sources and `.zmem/.gitignore` stay trackable.
 
+## Automatic background backfill
+
+Normal init/sync/recall/search/show/links return the available result together with
+`memory_coverage` and `backfill`. Admission is automatic: at most two targets run
+and eight wait per user home. Accepted requests survive CLI exit and execute one
+bounded segment per worker invocation. Partial construction stays private until
+the complete target view is ready. `already_pending` reuses a job identifier;
+`already_fulfilled` does not imply that an explicitly bounded answer is complete.
+Report queue_full/ineligible/failed with their reason and keep using the returned
+foreground result. Do not continuously retry a full queue.
+
+```console
+zmem jobs
+zmem backfill status
+zmem backfill pause JOB_ID
+zmem backfill resume JOB_ID
+zmem backfill cancel JOB_ID
+zmem service status
+zmem service stop
+zmem service start
+```
+
+Jobs/backfill/service status are observational and do not create an index or
+start a service. Service stop pauses work and blocks automatic dispatch; start
+re-enables dispatch without resuming paused jobs. Pause/cancel persist until an
+explicit resume. `--no-background` prevents admission for one foreground command,
+but does not stop an already running job or prevent foreground computation.
+Set `background: { enabled: false }` in user or repository config for persistent
+admission opt-out. A user no-bootstrap instruction still forbids commands that
+would initialize missing foreground state.
+
+User background defaults are `timeout_ms: 30000`, `grace_ms: 5000`,
+`max_attempts: 3`, and `max_staging_bytes: 536870912`. A worker resumes sealed
+progress; repeated timeouts without progress become a visible failure. Inspect
+the error before changing the deadline or resuming. Session-bound nondeterministic
+extensions are ineligible for detached work; they still support foreground use.
+Stable promotion boundaries remain separate from local backfill eligibility.
+Checks never enqueue their hypothetical proposals or retry external hooks.
+
 Local generated state lives under `.zmem/index/PLATFORM-ARCH`. User policy is
 `~/.zmem/config.yaml`, shared state is `~/.zmem/v2/`, and reusable extension
 installations are `~/.zmem/extensions/ID/VERSION`. `--home` or `ZMEM_HOME` selects

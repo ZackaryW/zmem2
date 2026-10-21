@@ -6,6 +6,9 @@ import { pathToFileURL } from 'node:url';
 import { MemoryEngine, type QueryOptions } from '../core/engine.js';
 import { MemoryError } from '../core/contracts.js';
 import { configuration, UserConfigSchema } from '../core/config.js';
+import { BackgroundQueue } from '../core/background-queue.js';
+import { launchSupervisor } from '../core/background-service.js';
+import { withBackfill } from '../core/background-admission.js';
 
 const booleans = new Set([
   'human',
@@ -20,6 +23,7 @@ const booleans = new Set([
   'user',
   'force',
   'events',
+  'no-background',
 ]);
 const strings = new Set([
   'repo',
@@ -69,9 +73,12 @@ function argumentsOf(args: string[]) {
 const help = `zmem <command> [options]
 Commands: init [path], sync [path], status [path],
           recall, search <text>, show <ref>, links, check,
-          config, evict, retry <job-or-hook-key>
+          config, evict, retry <job-or-hook-key>, jobs,
+          backfill status | pause JOB | resume JOB | cancel JOB,
+          service status | start | stop
 Index: index [path] is an alias for sync
 Global: --repo PATH --home PATH --ref REF --commit-limit N --node-limit N --human
+Background: --no-background disables automatic admission for this call
 Init: --associate REPOSITORY_ID --trust-extensions
 Config: --user --stable-ref REF | --stable-oid OID
 Queries: --event TYPE --scope SCOPE --area PATH --since REF_OR_DATE
@@ -102,6 +109,26 @@ export async function main(args = process.argv.slice(2)) {
   if (v.version) return { product: 'zmem', version: '0.1.0' };
   if (v.help || !p.length) return help;
   const command = p[0]!;
+  if (['jobs', 'backfill', 'service'].includes(command)) {
+    const settings = configuration(resolve(get('repo') ?? '.'), get('home'));
+    const queue = new BackgroundQueue(settings.home);
+    const action = p[1] ?? 'status';
+    if (command === 'jobs' || action === 'status') return { command, ...queue.inspect() };
+    if (command === 'service' && ['start', 'stop'].includes(action)) {
+      queue.setEnabled(action === 'start');
+      const error = action === 'start' ? await launchSupervisor(settings.home) : undefined;
+      return { command, action, ...queue.inspect(), ...(error ? { error } : {}) };
+    }
+    if (command === 'backfill' && ['pause', 'resume', 'cancel'].includes(action) && p[2]) {
+      const result = queue.control(p[2], action as 'pause' | 'resume' | 'cancel');
+      const error =
+        action === 'resume' && result.status === 'accepted'
+          ? await launchSupervisor(settings.home)
+          : undefined;
+      return { command, ...result, ...(error ? { error } : {}) };
+    }
+    throw new MemoryError('invalid_input', 'invalid background control command');
+  }
   const acceptsPath = ['init', 'sync', 'index', 'status'].includes(command);
   if (acceptsPath && (p.length > 2 || (p[1] && get('repo'))))
     throw new MemoryError('invalid_input', 'choose one repository path or --repo PATH');
@@ -125,44 +152,56 @@ export async function main(args = process.argv.slice(2)) {
     includeInvalid: !!v['include-invalid'],
     force: !!v.force,
   };
+  if (
+    ['init', 'sync', 'index', 'recall', 'search', 'show', 'links'].includes(command) &&
+    (options.ref || !engine.repo.unborn())
+  )
+    options.ref = engine.repo.resolve(options.ref);
+  const finish = <T extends { attention?: import('../core/contracts.js').Attention | null }>(
+    result: T,
+  ) => withBackfill(engine, options, result, !!v['no-background']);
   switch (command) {
     case 'init':
-      return { command, ...(await engine.init(options)) };
+      return finish({ command, ...(await engine.init(options)) });
     case 'sync':
     case 'index': {
       const segment = await engine.sync(options);
-      return {
+      return finish({
         command,
         segment: segment.id,
         coverage: segment.coverage,
         attention: segment.attention,
         metrics: engine.metrics,
-      };
+      });
     }
     case 'recall': {
       const result = await engine.recall(options);
-      if (v.events) return { ...result, results: [...new Set(result.results.map((e) => e.type))] };
-      return result;
+      if (v.events)
+        return finish({ ...result, results: [...new Set(result.results.map((e) => e.type))] });
+      return finish(result);
     }
     case 'search':
       if (!p[1]) throw new MemoryError('invalid_input', 'search requires text');
-      return engine.search(p.slice(1).join(' '), options);
+      return finish(await engine.search(p.slice(1).join(' '), options));
     case 'show':
       if (!p[1]) throw new MemoryError('invalid_input', 'show requires a commit');
-      return engine.show(p[1], options);
+      return finish(await engine.show(p[1], options));
     case 'links':
-      return engine.links(options);
+      return finish(await engine.links(options));
     case 'check': {
       if (Number(!!get('file')) + Number(stdin) !== 1)
         throw new MemoryError('invalid_input', 'check requires exactly one of --file or --stdin');
       const message = readFileSync(stdin ? 0 : resolve(get('file')!), 'utf8');
-      return engine.check(message, {
-        ...options,
-        deep: !!v.deep,
-        requireAnnotation: !!v['require-annotation'],
-        conventional: !!v.conventional,
-        maxSubjectLength: numeric('max-subject-length'),
-      });
+      return {
+        ...(await engine.check(message, {
+          ...options,
+          deep: !!v.deep,
+          requireAnnotation: !!v['require-annotation'],
+          conventional: !!v.conventional,
+          maxSubjectLength: numeric('max-subject-length'),
+        })),
+        backfill: { status: 'ineligible', reason: 'proposal_preview' },
+      };
     }
     case 'status':
       return engine.status();

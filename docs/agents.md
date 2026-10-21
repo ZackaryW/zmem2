@@ -37,6 +37,15 @@ case-insensitive substring matching; recall/search order is newest-first, not
 semantic relevance. An empty answer with bounded attention is not proof that no
 older decision exists. There is no MCP server in this product version.
 
+Normal CLI operations automatically request detached backfill and return its
+admission outcome in `backfill`. Report this alongside the result: `accepted` or
+`already_pending` means work is scheduled, not that the answer is complete.
+`memory_coverage` describes the answer actually returned. A full queue or failed
+admission does not invalidate that answer; do not poll or retry in a tight loop.
+Honor no-background requests with `--no-background` or persistent background
+configuration. Use `jobs`, `backfill status` or `service status` for observational
+monitoring; pause/cancel/stop are explicit lifecycle controls.
+
 ## Load only the workflow needed
 
 - [zmem-query-memory](../skills/zmem-query-memory/SKILL.md): everyday retrieval,

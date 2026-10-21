@@ -51,6 +51,14 @@ error and continue with available evidence; do not loop on the same failure.
 5. Report the relevant SHA/annotation index and any material coverage limit or
    conflict with current evidence. Invalid entries are historical evidence only.
 
+Normal CLI results include `backfill` admission status and `memory_coverage`.
+Automatic admission needs no separate agent command. Return the available memory
+and scheduling outcome together; queued/running work does not make partial
+coverage complete. Do not loop on `queue_full`, `ineligible` or `failed`.
+Honor a user no-background instruction with `--no-background`; it does not make
+foreground queries read-only. `jobs`, `backfill status` and `service status` are
+observational and do not bootstrap. Use the setup reference for lifecycle controls.
+
 Queries may build missing derived state. They are not a request to change user
 policy, grant extension trust, associate repositories, or retry external hooks.
 If the engine is unavailable, say so and continue with current repository/Git
