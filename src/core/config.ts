@@ -36,10 +36,26 @@ export const UserConfigSchema = z
     profiles: z
       .object({ max_entries: positive.default(4096), retention_days: positive.default(30) })
       .default({ max_entries: 4096, retention_days: 30 }),
+    background: z
+      .object({
+        enabled: z.boolean().default(true),
+        timeout_ms: positive.default(30000),
+        grace_ms: positive.default(5000),
+        max_attempts: positive.default(3),
+        max_staging_bytes: positive.default(536870912),
+      })
+      .default({
+        enabled: true,
+        timeout_ms: 30000,
+        grace_ms: 5000,
+        max_attempts: 3,
+        max_staging_bytes: 536870912,
+      }),
   })
   .strict();
 export const RepoConfigSchema = z
   .object({
+    background: z.object({ enabled: z.boolean().default(true) }).optional(),
     extensions: z
       .array(
         z.union([
