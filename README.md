@@ -4,6 +4,10 @@ Local-first memory from Git commit annotations, stored as precalculated segments
 The CLI, library, built-in types, DSL, and JavaScript extension seam use one
 TypeScript/Node engine.
 
+For agent use, start with the [short usage guide](docs/agents.md). The package
+ships focused skills for querying memory, authoring commits, and designing
+extensions, with setup and recovery details linked only where needed.
+
 ## Build and install
 
 Requires Node 24 or 26 and Git on PATH.

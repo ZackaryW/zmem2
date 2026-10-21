@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Query zmem Memory'
+  short_description: 'Retrieve relevant computed repository memory'
+  default_prompt: 'Use $zmem-query-memory to find repository decisions and lessons relevant to this task.'

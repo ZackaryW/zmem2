@@ -19,7 +19,8 @@
   "files": [
     "dist/src",
     "README.md",
-    "docs"
+    "docs",
+    "skills"
   ],
   "scripts": {
     "build": "tsc",
@@ -27,8 +28,8 @@
     "test": "npm run build && node --test dist/tests/*.test.js",
     "start": "node dist/src/cli/main.js",
     "prepack": "npm run build",
-    "format": "prettier --write src tests scripts README.md docs package.json tsconfig.json .github",
-    "format:check": "prettier --check src tests scripts README.md docs package.json tsconfig.json .github",
+    "format": "prettier --write src tests scripts README.md docs skills package.json tsconfig.json .github",
+    "format:check": "prettier --check src tests scripts README.md docs skills package.json tsconfig.json .github",
     "bench": "npm run build && node scripts/benchmark.mjs"
   },
   "dependencies": {

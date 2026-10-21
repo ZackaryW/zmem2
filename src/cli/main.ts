@@ -78,7 +78,13 @@ Queries: --event TYPE --scope SCOPE --area PATH --since REF_OR_DATE
          --include-invalid --limit N --min-score N
 Check: --file PATH | --stdin [--deep] [--require-annotation]
        [--conventional] [--max-subject-length N]
-Use --home or ZMEM_HOME for isolated deployments. JSON is the default output.`;
+Use --home or ZMEM_HOME for isolated deployments. JSON is the default output.
+
+Agent use: recall recorded decisions/lessons; search matches literal text;
+show inspects an origin. Effects are already computed. Check attention coverage
+and current repository evidence before applying memory. Check --file previews
+a proposed commit; --deep is an explicit fresh audit. Queries can build missing state.
+Guide: docs/agents.md in the installed package; skills/ contains the focused workflows.`;
 
 export async function main(args = process.argv.slice(2)) {
   // --stdin is a source selector, not an option value.
