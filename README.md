@@ -90,7 +90,7 @@ start re-enables dispatch, and paused jobs require explicit resume. See
 
 Results default to JSON. `--human` formats readable JSON. `--event`, `--scope`,
 `--area`, `--since`, `--min-score`, and `--limit` filter recall/search results.
-Limits on returned results are separate from history attention: initial defaults are 500
+Limits on returned results are separate from history attention: initial defaults are 64
 commits and 400 syntactically valid annotations. `--commit-limit` and `--node-limit`
 override these; `-1` disables one dimension. Environment equivalents are
 `ZMEM_COMMIT_LIMIT` and `ZMEM_NODE_LIMIT`. Selection never applies half a commit.

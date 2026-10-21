@@ -12,7 +12,7 @@ pauses queued/active work and prevents automatic dispatch until explicit start.
 An ownership token fences publication after pause, cancellation or replacement.
 Status reads existing control state without initializing a repository or service.
 
-User `background` configuration defaults to enabled, a 30000-ms worker deadline,
+User `background` configuration defaults to enabled, a 90000-ms worker deadline,
 5000-ms termination grace, three interrupted attempts without progress and a
 536870912-byte per-target staging budget. A repository can set
 `background: { enabled: false }` without changing its extension surface.
@@ -69,10 +69,28 @@ foreground computation or existing background work. Policy opt-out is available
 in user and repository configuration. Automatic admissions never resume paused,
 cancelled or failed targets.
 
-A Windows pilot with 546 commits exceeded the default 30-second deadline before
+A Windows pilot with 546 commits exceeded the prior 30-second default deadline before
 its first 256-commit segment sealed. Explicit resume with a 90-second deadline
 completed all three segments; the pilot configuration was then restored. See
 [verification evidence](verification.md#large-history-pilot-and-default-timeout-limitation).
 The default foreground window also took 35.6 seconds in that run. Detached
 execution bounds worker lifetime; it does not by itself guarantee fast initial
 responses or sufficient time to seal a segment.
+
+Fresh normal memory requests use at most 64 commits and 400 annotations before
+returning their result and automatic admission status. Configure the initial
+commit window in the user config:
+
+```yaml
+foreground:
+  initial_commits: 64
+background:
+  timeout_ms: 90000
+```
+
+Compatible complete coverage takes precedence over the initial window, including
+extension to a descendant head. Explicit attention flags/environment values
+retain their dimension defaults of 500 commits and 400 nodes and override this
+automatic policy. Preview checks retain their existing 500/400 defaults. A complete
+base is reused only when its coverage is a compatible prefix of the requested
+history; divergent history follows ordinary correct recomputation.

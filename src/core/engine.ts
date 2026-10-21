@@ -278,6 +278,28 @@ export class MemoryEngine {
       if (this.local.view(fullKey) || this.coordinator?.catalog.view(fullKey)) {
         commitLimit = -1;
         nodeLimit = -1;
+      } else {
+        commitLimit = this.settings.user.foreground.initial_commits;
+        const complete = [
+          ...this.local.candidates(
+            this.registration.repository,
+            selectedSurface.id,
+            Number.MAX_SAFE_INTEGER,
+          ),
+          ...(this.coordinator?.catalog.candidates(
+            this.registration.repository,
+            selectedSurface.id,
+            Number.MAX_SAFE_INTEGER,
+          ) ?? []),
+        ].filter((pack) => !pack.attention.truncated);
+        const exact = complete.find((pack) => pack.head === head);
+        if (exact) {
+          commitLimit = exact.attention.commit_limit;
+          nodeLimit = exact.attention.node_limit;
+        } else if (complete.some((pack) => this.repo.ancestor(pack.head, head))) {
+          commitLimit = -1;
+          nodeLimit = -1;
+        }
       }
     }
     if ([commitLimit, nodeLimit].some((n) => !Number.isSafeInteger(n) || (n <= 0 && n !== -1)))
@@ -382,15 +404,16 @@ export class MemoryEngine {
               this.registration.repository,
               selectedSurface.id,
               coverage.length,
-              policy,
+              commitLimit === -1 && nodeLimit === -1 ? undefined : policy,
             ),
             ...(this.coordinator?.catalog.candidates(
               this.registration.repository,
               selectedSurface.id,
               coverage.length,
-              policy,
+              commitLimit === -1 && nodeLimit === -1 ? undefined : policy,
             ) ?? []),
           ]
+            .filter((p) => p.policy === policy || !p.attention.truncated)
             .filter((p) => this.coverageOf(p).every((oid, i) => coverage[i] === oid))
             .sort((a, b) => b.attention.commits - a.attention.commits);
           for (const candidate of candidates)
@@ -465,6 +488,26 @@ export class MemoryEngine {
         try {
           if (base && this.coordinator?.catalog.row(base.id)?.resident) this.adopt(base.id);
           if (base?.attention.commits === coverage.length) {
+            if (base.policy !== policy) {
+              const content = {
+                ...base,
+                policy,
+                attention: selection.attention,
+                base: base.id,
+                deps: [base.id],
+                commits: [],
+                coverage: [],
+                checkpoints: [],
+                pages: {},
+              };
+              const alias: Pack = {
+                ...content,
+                id: identity({ source: base.id, policy, attention: selection.attention }),
+              };
+              this.local.publish(alias, this.settings.user.segments.max_bytes);
+              this.local.setView(key, alias.id);
+              return alias;
+            }
             this.local.setView(key, base.id);
             if (this.coordinator?.catalog.row(base.id)?.resident) this.adopt(base.id);
             return base;

@@ -8,6 +8,9 @@ import { MemoryError } from './contracts.js';
 const positive = z.number().int().positive();
 export const UserConfigSchema = z
   .object({
+    foreground: z
+      .object({ initial_commits: positive.default(64) })
+      .default({ initial_commits: 64 }),
     promotion: z
       .object({
         enabled: z.boolean().default(true),
@@ -39,14 +42,14 @@ export const UserConfigSchema = z
     background: z
       .object({
         enabled: z.boolean().default(true),
-        timeout_ms: positive.default(30000),
+        timeout_ms: positive.default(90000),
         grace_ms: positive.default(5000),
         max_attempts: positive.default(3),
         max_staging_bytes: positive.default(536870912),
       })
       .default({
         enabled: true,
-        timeout_ms: 30000,
+        timeout_ms: 90000,
         grace_ms: 5000,
         max_attempts: 3,
         max_staging_bytes: 536870912,

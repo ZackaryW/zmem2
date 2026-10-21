@@ -72,7 +72,7 @@ Set `background: { enabled: false }` in user or repository config for persistent
 admission opt-out. A user no-bootstrap instruction still forbids commands that
 would initialize missing foreground state.
 
-User background defaults are `timeout_ms: 30000`, `grace_ms: 5000`,
+User background defaults are `timeout_ms: 90000`, `grace_ms: 5000`,
 `max_attempts: 3`, and `max_staging_bytes: 536870912`. A worker resumes sealed
 progress; repeated timeouts without progress become a visible failure. Inspect
 the error before changing the deadline or resuming. Session-bound nondeterministic

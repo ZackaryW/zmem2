@@ -57,7 +57,7 @@ Two limits have different meanings:
 
 - `truncated` describes matches omitted by the result `--limit`.
 - `attention.truncated` and `attention.reached` describe bounded history
-  selection. Initial defaults are 500 commits and 400 syntactically valid annotations,
+  selection. Initial defaults are 64 commits and 400 syntactically valid annotations,
   including supported effects and unsupported types. Selection keeps whole
   commits; ordinary prose does not become a node.
 

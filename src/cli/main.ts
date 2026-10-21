@@ -80,6 +80,7 @@ Index: index [path] is an alias for sync
 Global: --repo PATH --home PATH --ref REF --commit-limit N --node-limit N --human
 Background: --no-background disables automatic admission for this call
 Init: --associate REPOSITORY_ID --trust-extensions
+Fresh foreground: 64 commits / 400 annotations; user foreground.initial_commits overrides startup
 Config: --user --stable-ref REF | --stable-oid OID
 Queries: --event TYPE --scope SCOPE --area PATH --since REF_OR_DATE
          --include-invalid --limit N --min-score N
