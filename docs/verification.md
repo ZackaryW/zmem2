@@ -121,3 +121,34 @@ ignore file remained trackable. Evidence is retained under
 `~/.zmem-pilots/test-pilot/evidence/ignore-01` through `ignore-09` command records.
 Both source and pilot commit messages passed computed checks and post-commit
 inspection. Task 10.6 is complete; task 9.4 remains open.
+
+## Detached background backfill
+
+The `add-detached-background-backfill` change passed all 66 tests on Windows
+Node 26.8.2 and all 14 focused background tests on Node 24.22.0. Build/typecheck,
+formatting, strict OpenSpec validation, skill structure and eleven guide/skill
+links also passed. These tests cover durable concurrent queue admission, two
+running/eight waiting limits, persistent controls, publication fencing, staged
+segment recovery, old effect targets, hook receipts, staging budgets, detached
+caller exit, supervisor replacement, timeout and foreground failure isolation.
+
+The cross-location backfill test verified timestamped idempotent completion
+receipts, stable promotion after two locations and zero-computation adoption in
+a third. Worker watchdogs terminate their owned process tree/group at the hard
+deadline. The Windows subprocess tests exercised termination and recovery; this
+session did not run Linux/macOS process-group behavior or large-history benchmarks.
+
+An isolated installed-package run initialized a five-commit repository with a
+one-commit foreground limit, returned accepted admission and partial coverage,
+completed detached full-history backfill, returned five entries, then performed
+warm sync with zero computation/expansion. Private staging was reclaimed and
+service stop was verified. The final installed engine matched source bytes.
+Evidence is retained at
+`C:/Users/ZackaryW/AppData/Local/Temp/zmem-backfill-installed-67crqb3n/evidence-final.json`.
+
+Three installed query-skill files matched the packaged sources after backup to
+`~/.codex/skill-backups/zmem-background-cbb5820841824c0984bb6085283536f2/`.
+The global runtime and prior pilot repository were not replaced or modified.
+Full ancestry selection still scans Git history; very large repositories may
+require a longer worker deadline, with explicit bounded failure if no sealed
+progress is possible. The prior rebuild's platform task 9.4 remains open.

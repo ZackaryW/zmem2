@@ -688,12 +688,18 @@ export class MemoryEngine {
     guard(() => {});
     await request.selectedSurface.load();
     for (const pack of packs) {
-      const computed = source.local.db((db) =>
-        db.prepare('SELECT value FROM meta WHERE key=?').get(`background-computed:${pack.id}`),
+      const computed = source.local.db(
+        (db) =>
+          db.prepare('SELECT value FROM meta WHERE key=?').get(`background-computed:${pack.id}`) as
+            { value: string } | undefined,
       );
       if (computed && this.coordinator)
         guard(() => {
-          this.coordinator!.observe(pack, this.registration.location, `${event}:${pack.id}`);
+          this.coordinator!.observe(
+            pack,
+            this.registration.location,
+            `${computed.value}:${event}:${pack.id}`,
+          );
           if (request.selectedSurface.shareable && this.coordinator!.eligible(this.repo, pack))
             this.coordinator!.promote(this.repo, pack, this.local, (key) => this.resolvePack(key));
         });
@@ -706,6 +712,8 @@ export class MemoryEngine {
           );
         }
     }
+    if (this.coordinator?.catalog.row(id)?.resident)
+      guard(() => this.coordinator!.catalog.setView(request.key, id));
     return packs.at(-1)!;
   }
   /** Repartition sealed checkpoints by copying calculated pages, never handlers. */

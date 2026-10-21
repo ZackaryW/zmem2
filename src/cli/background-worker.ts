@@ -3,6 +3,7 @@ import { BackgroundQueue } from '../core/background-queue.js';
 import { computeBackfillSegment } from '../core/background-compute.js';
 import { configuration } from '../core/config.js';
 import { MemoryError } from '../core/contracts.js';
+import { execFileSync } from 'node:child_process';
 
 interface Input {
   home: string;
@@ -69,6 +70,24 @@ if (!isMainThread) {
         if (requested && Date.now() - requested >= config.grace_ms) {
           finish({ error: 'worker hard timeout or revoked ownership', retryable: true });
           // The watchdog is outside the computation thread: stuck JavaScript cannot block it.
+          // Each wrapper owns its process group/tree, including synchronous Git children.
+          if (process.platform === 'win32') {
+            try {
+              execFileSync('taskkill', ['/PID', String(process.pid), '/T', '/F'], {
+                windowsHide: true,
+                stdio: 'ignore',
+                timeout: 1000,
+              });
+            } catch {
+              /* Fall through to process exit. */
+            }
+          } else {
+            try {
+              process.kill(-process.pid, 'SIGKILL');
+            } catch {
+              /* Fall through to process exit. */
+            }
+          }
           process.exit(124);
         }
       }, 50);

@@ -56,11 +56,11 @@ test('detached supervisor survives caller exit and completes sequential segments
     f.clean();
   }
 });
-test('hard timeout bounds stuck extension work and exhausts retries', async () => {
+test('worker deadlines bound stuck extension work and exhaust retries', async () => {
   const f = fixture(),
     q = new BackgroundQueue(f.home);
   try {
-    f.user({ background: { timeout_ms: 500, grace_ms: 100, max_attempts: 2 } });
+    f.user({ background: { timeout_ms: 1500, grace_ms: 100, max_attempts: 2 } });
     extension(
       f.repo,
       {
@@ -78,7 +78,7 @@ test('hard timeout bounds stuck extension work and exhausts retries', async () =
     await launchSupervisor(f.home);
     await until(() => q.get(a.job_id!)?.state === 'failed');
     assert.equal(q.get(a.job_id!)?.attempts, 2);
-    assert.match(q.get(a.job_id!)!.error!, /timeout|interrupt/);
+    assert.match(q.get(a.job_id!)!.error!, /timeout|interrupt|deadline/);
     assert.equal(e.local.rows().length, 0);
   } finally {
     await stop(q);

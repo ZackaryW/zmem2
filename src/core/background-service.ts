@@ -61,6 +61,7 @@ export async function supervise(home: string) {
             ],
             {
               windowsHide: true,
+              detached: true,
               stdio: 'ignore',
             },
           );

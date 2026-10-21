@@ -109,3 +109,42 @@ test('revoked ownership and storage budget prevent publication', async () => {
     f.clean();
   }
 });
+
+test('backfill promotion counts completed locations and a third location adopts without replay', async () => {
+  const f = fixture();
+  try {
+    f.user({ segments: { max_commits: 1 } });
+    f.commit('feat: one\n\nzmem(DECISION): one');
+    const head = f.commit('feat: two\n\nzmem(DECISION): two');
+    const first = new MemoryEngine(f.repo, { home: f.home });
+    f.user({
+      segments: { max_commits: 1 },
+      promotion: { stable_boundaries: [{ repository: first.registration.repository, oid: head }] },
+    });
+    const second = new MemoryEngine(f.clone('second'), {
+      home: f.home,
+      associate: first.registration.repository,
+    });
+    const q = new BackgroundQueue(f.home),
+      s = q.acquireSupervisor()!;
+    for (const engine of [new MemoryEngine(f.repo, { home: f.home }), second]) {
+      q.admit(backfillTarget(engine));
+      for (;;) {
+        const job = q.dispatch(s)!;
+        const result = await computeBackfillSegment(f.home, job.id, job.token!);
+        q.settle(job.id, job.token!, result, 3);
+        if (result.complete) break;
+      }
+    }
+    assert.equal(second.coordinator!.catalog.rows().filter((r) => r.resident).length, 2);
+    const third = new MemoryEngine(f.clone('third'), {
+      home: f.home,
+      associate: first.registration.repository,
+    });
+    assert.equal((await third.recall()).count, 2);
+    assert.equal(third.metrics.computed_commits, 0);
+    assert.equal(third.metrics.expansions, 0);
+  } finally {
+    f.clean();
+  }
+});

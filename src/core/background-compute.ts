@@ -107,8 +107,8 @@ export async function computeBackfillSegment(
     onSegment: (pack) => {
       stage.local.db((db) =>
         db
-          .prepare('INSERT OR REPLACE INTO meta VALUES(?,?)')
-          .run(`background-computed:${pack.id}`, '1'),
+          .prepare('INSERT OR IGNORE INTO meta VALUES(?,?)')
+          .run(`background-computed:${pack.id}`, String(Date.now())),
       );
       return false;
     },
