@@ -94,3 +94,11 @@ retain their dimension defaults of 500 commits and 400 nodes and override this
 automatic policy. Preview checks retain their existing 500/400 defaults. A complete
 base is reused only when its coverage is a compatible prefix of the requested
 history; divergent history follows ordinary correct recomputation.
+
+Git selection now reads metadata in batches of at most 64 resolved commits,
+retaining Git's own decoding and merge-parent semantics. The process-local metadata
+cache is bounded to 256 records and 8 MiB. Construction reuses/prefetches those
+records while changed-path queries retain existing behavior. Tests compare
+multiline Unicode and unusual raw-message decoding with individual Git reads,
+preserve deterministic merge ordering, and require only two metadata processes
+for a 70-commit selection. This does not change computed-segment identities.

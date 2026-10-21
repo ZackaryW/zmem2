@@ -595,9 +595,12 @@ export class MemoryEngine {
           };
           // New pages become readable after every publication without an overlay-chain walk.
           state.addReader((hash) => this.local.page(hash));
-          for (const header of selection.commits.slice(prefix.length)) {
+          const remaining = selection.commits.slice(prefix.length);
+          for (const [offset, header] of remaining.entries()) {
             options.guard?.();
             if (chunk.length >= this.settings.user.segments.max_commits) await publish();
+            if (offset % 64 === 0)
+              this.repo.prefetch(remaining.slice(offset, offset + 64).map((commit) => commit.oid));
             const commit = this.repo.commit(header.oid);
             let checkpoint = state.checkpoint();
             const priorFrontier = new Set(frontier);
