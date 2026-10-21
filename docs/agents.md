@@ -30,9 +30,9 @@ older decision exists. There is no MCP server in this product version.
 
 - [zmem-query-memory](../skills/zmem-query-memory/SKILL.md): everyday retrieval,
   selected-snapshot provenance and coverage interpretation.
-- `zmem-author-commits`: durable annotations and proposal validation when authoring
+- [zmem-author-commits](../skills/zmem-author-commits/SKILL.md): durable annotations and proposal validation when authoring
   or reviewing commits.
-- `zmem-design-extensions`: declarative types, DSL and JavaScript when adding
+- [zmem-design-extensions](../skills/zmem-design-extensions/SKILL.md): declarative types, DSL and JavaScript when adding
   annotation behavior.
 
 For initialization, clone association, stable boundaries, cache budgets or failed

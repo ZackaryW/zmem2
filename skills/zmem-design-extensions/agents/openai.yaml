@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Design zmem Extensions'
+  short_description: 'Build declarative and JavaScript memory types'
+  default_prompt: 'Use $zmem-design-extensions to implement this annotation behavior with declarative types, DSL or JavaScript.'

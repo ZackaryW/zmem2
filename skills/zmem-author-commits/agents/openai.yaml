@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Author zmem Commits'
+  short_description: 'Write commits with durable zmem annotations'
+  default_prompt: 'Use $zmem-author-commits to prepare and validate a commit with appropriate durable memory.'
