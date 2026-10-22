@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { stringify } from 'yaml';
 import { pathToFileURL } from 'node:url';
@@ -107,7 +107,7 @@ export async function main(args = process.argv.slice(2)) {
     if (!Number.isFinite(n)) throw new MemoryError('invalid_input', `${name} must be numeric`);
     return n;
   };
-  if (v.version) return { product: 'zmem', version: '0.1.0' };
+  if (v.version) return { product: 'zmem', version: '0.1.1' };
   if (v.help || !p.length) return help;
   const command = p[0]!;
   if (['jobs', 'backfill', 'service'].includes(command)) {
@@ -235,7 +235,7 @@ export async function main(args = process.argv.slice(2)) {
       throw new MemoryError('invalid_input', `unknown command: ${command}`);
   }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
     const result = await main();
     const human = process.argv.includes('--human');

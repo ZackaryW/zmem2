@@ -1,6 +1,6 @@
 {
   "name": "zmem2",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local-first computed Git memory segments",
   "type": "module",
   "license": "MIT",

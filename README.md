@@ -18,7 +18,7 @@ Requires Node 24 or 26 and Git on PATH.
 npm ci
 npm test
 npm pack
-npm install --global ./zmem2-0.1.0.tgz
+npm install --global ./zmem2-0.1.1.tgz
 zmem --version
 ```
 
