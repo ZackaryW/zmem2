@@ -39,3 +39,15 @@ are independently verified: [storage](storage.md) and
 Set `ZMEM_HOME` or pass `--home` / `{home}` to isolate user data. Repository
 configuration and extension sources are trackable. Generated `.zmem/index`
 storage contains its own ignore file and is never intended for Git tracking.
+
+## Background integration tests
+
+Background test waits allow up to 60 seconds for multi-segment work on shared CI
+runners, including repeated Node and Git startup on Windows. This test budget does
+not change application worker deadlines. A failed job ends the wait immediately;
+a timeout reports the last queue snapshot for diagnosis.
+
+Teardown remembers observed supervisor and worker PIDs and waits for actual
+process exit before deleting fixtures. A settled queue can clear its PID fields
+while a wrapper is still closing files, so queue state alone is insufficient for
+Windows cleanup.

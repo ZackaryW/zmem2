@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
-import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.js';
-import { BackgroundQueue, processAlive } from '../src/core/background-queue.js';
+import { BackgroundQueue } from '../src/core/background-queue.js';
+import { waitForJob, stopBackground } from './background-test-helpers.js';
 
 const call = (repo: string, home: string, ...args: string[]) => {
   const result = spawnSync(
@@ -16,13 +16,6 @@ const call = (repo: string, home: string, ...args: string[]) => {
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
 };
-async function waitFor(predicate: () => boolean) {
-  const end = Date.now() + 15000;
-  while (!predicate()) {
-    if (Date.now() > end) throw new Error('background did not finish');
-    await delay(50);
-  }
-}
 test('CLI returns foreground memory with automatic admission and later uses full coverage', async () => {
   const f = fixture(),
     q = new BackgroundQueue(f.home);
@@ -36,7 +29,7 @@ test('CLI returns foreground memory with automatic admission and later uses full
     const again = call(f.repo, f.home, 'recall', '--commit-limit', '1');
     assert.equal(again.backfill.status, 'already_pending');
     assert.equal(again.backfill.job_id, first.backfill.job_id);
-    await waitFor(() => q.get(first.backfill.job_id)?.state === 'completed');
+    await waitForJob(q, first.backfill.job_id);
     const full = call(f.repo, f.home, 'recall');
     assert.equal(full.count, 4);
     assert.equal(full.memory_coverage.complete, true);
@@ -46,10 +39,7 @@ test('CLI returns foreground memory with automatic admission and later uses full
     assert.equal(bounded.memory_coverage.complete, false);
     assert.equal(bounded.backfill.status, 'already_fulfilled');
   } finally {
-    q.setEnabled(false);
-    await waitFor(
-      () => !q.inspect().service.running && q.inspect().jobs.every((j) => !processAlive(j.pid)),
-    );
+    await stopBackground(q);
     f.clean();
   }
 });
