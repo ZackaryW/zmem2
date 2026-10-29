@@ -17,8 +17,9 @@ The selected source's `package.json`, both root version declarations in
 `MAJOR.MINOR.PATCH` version. For example, `0.1.1` produces tag `v0.1.1`. The workflow
 does not bump versions or rewrite mismatching metadata.
 
-Every Node 24/26 job on macOS, Ubuntu, and Windows must pass dependency installation,
-type checking, formatting, tests, and package preparation. The last inspected
+Every release Node 24/26 job on macOS, Ubuntu, and Windows must pass dependency
+installation, TypeScript compilation with type checking, and tests. Formatting
+and package preparation run once on Ubuntu Node 24. The last inspected
 pre-workflow CI run (`39867870570`, source `d20cc09c`) had failures on Ubuntu Node 24
 and both Windows jobs. Such failures block publication; they are not waived by a
 passing macOS run or by these release-tooling checks.
@@ -67,7 +68,7 @@ workflow**. Choose the default branch for the workflow ref, supply the reviewed
 full SHA as `source_sha`, and leave `publish` unchecked (the default).
 
 The run executes release-helper checks, validates the exact selected source with
-the existing six-job matrix, and builds/tests the delivered source archive on
+the full six-job release matrix, and builds/tests the delivered source archive on
 macOS Node 24. The `release-assets` run artifact and summary identify the candidate.
 No remote tag or GitHub release is created in preview mode. A workflow run artifact
 is temporary validation output, not the permanent source URL for a formula.

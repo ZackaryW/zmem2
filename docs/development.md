@@ -4,6 +4,17 @@ zmem2 uses TypeScript/ES modules on Node 24 or 26. Git must be on PATH.
 Run `npm ci`, `npm run typecheck`, `npm test`, and `npm pack` from the project root.
 Tests use Node's built-in runner and isolated temporary Git repositories/user homes.
 
+Routine GitHub Actions CI runs on pushes to `main`, pull requests, and manual
+dispatch. Four jobs test Node 24 on Windows, Ubuntu, and macOS, plus Node 26 on
+Ubuntu. Formatting, package preparation, and release-helper tests run once in the
+Ubuntu Node 24 job. `npm test` compiles with `tsc`, so every test job also checks
+types without a separate compiler pass. New routine runs cancel older runs for
+the same branch or pull request.
+
+Release validation uses all six OS/runtime combinations, with formatting and
+package preparation once on Ubuntu Node 24. Release invocations have separate
+concurrency groups and are not cancelled by routine CI or another release run.
+
 The CLI is `zmem`; library callers import `MemoryEngine` from the `zmem2` package.
 CLI formatting and startup belong to `src/cli`; semantic/storage contracts belong
 to `src/core`; `src/ext/{dsl,tseam,builtin}` implements operation adapters, module

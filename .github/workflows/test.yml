@@ -1,6 +1,7 @@
 name: Test
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -11,6 +12,9 @@ on:
         default: ''
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.source_sha && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !inputs.source_sha }}
 jobs:
   test:
     strategy:
@@ -18,6 +22,8 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
         node: [24, 26]
+        # Release calls validate every pair; routine CI keeps each OS and Node major.
+        exclude: ${{ fromJSON(inputs.source_sha && '[]' || '[{"os":"windows-latest","node":26},{"os":"macos-latest","node":26}]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -29,20 +35,11 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run typecheck
       - run: npm run format:check
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node == 24 }}
+      # npm test builds with tsc, including type checking, on every matrix entry.
       - run: npm test
       - run: npm pack --ignore-scripts
-  release-tooling:
-    if: ${{ !inputs.source_sha }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci --ignore-scripts
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node == 24 }}
       - run: npm run test:release
+        if: ${{ !inputs.source_sha && matrix.os == 'ubuntu-latest' && matrix.node == 24 }}

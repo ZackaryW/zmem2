@@ -33,7 +33,7 @@ The selected source MUST resolve to the requested full commit SHA in the default
 - **THEN** the workflow rejects it without substituting a moving branch or another commit
 
 ### Requirement: Existing validation matrix gates publication
-Publication SHALL require successful dependency installation, type checking, formatting checks, tests, and package preparation for the selected source across Node 24 and 26 on macOS, Ubuntu, and Windows. Existing ordinary CI triggers and matrix coverage SHALL remain available. Failed, cancelled, or skipped required validation MUST block publication.
+Publication SHALL require successful dependency installation, TypeScript compilation with type checking, and tests for the selected source across Node 24 and 26 on macOS, Ubuntu, and Windows. Formatting checks and package preparation SHALL run once for that source on Ubuntu Node 24. Failed, cancelled, or skipped required validation MUST block publication.
 
 #### Scenario: All required jobs pass
 - **WHEN** every required source-validation job succeeds for the selected commit
@@ -42,6 +42,24 @@ Publication SHALL require successful dependency installation, type checking, for
 #### Scenario: A required platform fails
 - **WHEN** any required platform/runtime job fails, is cancelled, or is skipped
 - **THEN** no new release tag or published GitHub release is created by that run
+
+### Requirement: Routine CI limits repeated validation
+Ordinary CI SHALL run on pushes to `main`, pull requests, and manual dispatch. Four jobs SHALL test Node 24 on macOS, Ubuntu, and Windows plus Node 26 on Ubuntu. Formatting, package preparation, and release-helper tests SHALL run once in the Ubuntu Node 24 job. Application tests SHALL compile TypeScript with type checking without a separate compiler pass.
+
+#### Scenario: Routine change
+- **WHEN** a push to `main`, a pull request update, or a manual ordinary test run is triggered
+- **THEN** four test jobs cover the supported operating systems and Node majors, and shared checks run once
+
+#### Scenario: Release validation
+- **WHEN** the release workflow supplies the exact selected source SHA
+- **THEN** six test jobs validate every supported OS/runtime pair, with independently scoped concurrency
+
+### Requirement: Routine cancellation preserves release validation
+Superseded routine runs for the same branch or pull request SHALL be cancelled. Reusable validation supplied with a release source SHA SHALL use a concurrency group specific to the caller run and SHALL NOT be cancelled by routine CI or another release invocation.
+
+#### Scenario: Newer routine work supersedes a run
+- **WHEN** another ordinary test run starts for the same branch or pull request
+- **THEN** the prior routine run is cancelled without cancelling an independent release validation
 
 ### Requirement: Versioned source assets are verifiable
 Release preparation SHALL produce `zmem2-<VERSION>-source.tar.gz`, `SHA256SUMS`, and `release.json` from the selected commit. The source archive MUST include package metadata, the committed lockfile, TypeScript source, and build configuration. The manifest MUST identify the version, tag, source SHA, archive filename, and archive SHA-256. Checksums MUST verify the delivered archive and manifest bytes.
