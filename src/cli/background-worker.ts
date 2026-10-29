@@ -1,5 +1,9 @@
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { BackgroundQueue } from '../core/background-queue.js';
+import {
+  BackgroundQueue,
+  backgroundDatabaseBusy,
+  retryBackgroundControl,
+} from '../core/background-queue.js';
 import { computeBackfillSegment } from '../core/background-compute.js';
 import { configuration } from '../core/config.js';
 import { MemoryError } from '../core/contracts.js';
@@ -25,7 +29,9 @@ if (!isMainThread) {
   } catch (error) {
     parentPort!.postMessage({
       error: String(error),
-      retryable: error instanceof MemoryError && ['interrupted', 'cancelled'].includes(error.code),
+      retryable:
+        backgroundDatabaseBusy(error) ||
+        (error instanceof MemoryError && ['interrupted', 'cancelled'].includes(error.code)),
     });
   }
 } else {
@@ -54,7 +60,14 @@ if (!isMainThread) {
         finished = true;
         clearInterval(monitor);
         clearTimeout(deadline);
-        queue.settle(id, token, outcome, config.max_attempts);
+        // Leave the watchdog responsive while another process owns the database.
+        // If settlement cannot finish, supervisor exit reconciliation retries it.
+        void retryBackgroundControl(
+          () => queue.settle(id, token, outcome, config.max_attempts),
+          5000,
+        ).catch(() => {
+          process.exitCode = 1;
+        });
       };
       const stopWork = () => {
         if (!requested) requested = Date.now();
@@ -64,8 +77,8 @@ if (!isMainThread) {
       const monitor = setInterval(() => {
         try {
           queue.guarded(id, token, () => {});
-        } catch {
-          stopWork();
+        } catch (error) {
+          if (!backgroundDatabaseBusy(error)) stopWork();
         }
         if (requested && Date.now() - requested >= config.grace_ms) {
           finish({ error: 'worker hard timeout or revoked ownership', retryable: true });

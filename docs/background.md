@@ -40,6 +40,15 @@ computation to stop at the deadline, then terminates its process after the grace
 period if necessary. This also prevents a stuck extension from blocking timeout
 handling. Worker ownership is checked during computation and publication.
 
+Control-database lock contention does not revoke ownership. The supervisor retries
+busy control transactions asynchronously, including dispatch and worker-exit
+reconciliation, and retains each worker's slot until reconciliation finishes.
+The watchdog ignores temporary busy/locked results while its deadline still
+applies. Computation interrupted by SQLite contention remains eligible for the
+normal bounded retry policy; guarded external work is never replayed by the
+control-transaction retry helper. Wrapper settlement retries for up to five
+seconds, then leaves recovery to the supervisor if it still cannot write.
+
 The supervisor retains a running target's slot across sequential segment workers;
 other repositories can use the second slot. Completed/paused/cancelled targets
 release capacity. Idle shutdown and admission coordinate through the same durable

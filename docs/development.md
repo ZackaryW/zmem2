@@ -51,3 +51,7 @@ Teardown remembers observed supervisor and worker PIDs and waits for actual
 process exit before deleting fixtures. A settled queue can clear its PID fields
 while a wrapper is still closing files, so queue state alone is insufficient for
 Windows cleanup.
+
+Contention regressions hold a real control-database write lock beyond the 250-ms
+SQLite timeout. They verify supervisor survival, ownership monitoring without
+false cancellation, and retryable computation with eventual durable settlement.

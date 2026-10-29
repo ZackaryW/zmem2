@@ -3,6 +3,33 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { identity, MemoryError } from './contracts.js';
+import { setTimeout as delay } from 'node:timers/promises';
+
+export function backgroundDatabaseBusy(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const sqlite = error as Error & { code?: string; errcode?: number };
+  return (
+    sqlite.code === 'ERR_SQLITE_ERROR' &&
+    typeof sqlite.errcode === 'number' &&
+    [5, 6].includes(sqlite.errcode & 0xff)
+  ); // SQLITE_BUSY / SQLITE_LOCKED, including extended codes.
+}
+
+/** Retry control transactions after rollback, never ownership-guarded external work. */
+export async function retryBackgroundControl<T>(
+  operation: () => T,
+  timeout = Infinity,
+): Promise<T> {
+  const end = performance.now() + timeout;
+  while (true) {
+    try {
+      return operation();
+    } catch (error) {
+      if (!backgroundDatabaseBusy(error) || performance.now() >= end) throw error;
+      await delay(50);
+    }
+  }
+}
 
 export type AdmissionStatus =
   'accepted' | 'already_pending' | 'already_fulfilled' | 'ineligible' | 'queue_full' | 'failed';
@@ -62,18 +89,27 @@ export class BackgroundQueue {
     if (!existsSync(this.file) && !create) return undefined;
     if (create) mkdirSync(join(this.home, 'background'), { recursive: true });
     const db = new DatabaseSync(this.file, { timeout: 250, readOnly: !create });
-    if (create)
-      db.exec(`PRAGMA journal_mode=WAL;
+    try {
+      if (
+        create &&
+        !db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='version'").get()
+      )
+        db.exec(`PRAGMA journal_mode=WAL;
+      BEGIN IMMEDIATE;
       CREATE TABLE IF NOT EXISTS version(value INTEGER NOT NULL);
       INSERT INTO version SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM version);
       CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY, state TEXT NOT NULL, data TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS service(id INTEGER PRIMARY KEY CHECK(id=1), enabled INTEGER NOT NULL, token TEXT, pid INTEGER, heartbeat INTEGER NOT NULL);
-      INSERT OR IGNORE INTO service VALUES(1,1,NULL,NULL,0);`);
-    if ((db.prepare('SELECT value FROM version').get() as { value: number }).value !== 1) {
+      INSERT OR IGNORE INTO service VALUES(1,1,NULL,NULL,0);
+      COMMIT;`);
+      if ((db.prepare('SELECT value FROM version').get() as { value: number }).value !== 1)
+        throw new MemoryError('incompatible', 'background database version mismatch');
+      return db;
+    } catch (error) {
+      if (db.isTransaction) db.exec('ROLLBACK');
       db.close();
-      throw new MemoryError('incompatible', 'background database version mismatch');
+      throw error;
     }
-    return db;
   }
   private transaction<T>(fn: (db: DatabaseSync) => T): T {
     const db = this.open(true)!;
