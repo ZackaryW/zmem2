@@ -1,0 +1,127 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full source commit SHA in the default branch's history
+        type: string
+        required: true
+      publish:
+        description: Publish the validated tag and GitHub release
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.prepare.outputs.source_sha }}
+      version: ${{ steps.prepare.outputs.version }}
+      tag: ${{ steps.prepare.outputs.tag }}
+      archive_sha256: ${{ steps.prepare.outputs.archive_sha256 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Check publication workflow ref
+        if: ${{ inputs.publish }}
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: node scripts/release/cli.mjs check-ref --default-branch "$DEFAULT_BRANCH"
+      - run: npm run test:release
+      - name: Fetch default-branch history
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: git fetch --no-tags origin "${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+      - name: Prepare exact source release
+        id: prepare
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: >-
+          node scripts/release/cli.mjs prepare
+          --source-sha "$SOURCE_SHA"
+          --default-ref "refs/remotes/origin/$DEFAULT_BRANCH"
+          --out "$RUNNER_TEMP/release-assets"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/release-assets/
+          if-no-files-found: error
+  validate:
+    needs: prepare
+    uses: ./.github/workflows/test.yml
+    with:
+      source_sha: ${{ needs.prepare.outputs.source_sha }}
+  archive-consumer:
+    needs: prepare
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/release-assets
+      - name: Build and exercise the delivered source archive
+        env:
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          ARCHIVE_SHA256: ${{ needs.prepare.outputs.archive_sha256 }}
+        run: >-
+          node scripts/release/cli.mjs consume
+          --dir "$RUNNER_TEMP/release-assets"
+          --source-sha "$SOURCE_SHA" --version "$VERSION"
+          --archive-sha256 "$ARCHIVE_SHA256"
+  publish:
+    needs: [prepare, validate, archive-consumer]
+    if: >-
+      ${{ inputs.publish &&
+          github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+          needs.prepare.result == 'success' &&
+          needs.validate.result == 'success' &&
+          needs.archive-consumer.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: source-release-${{ needs.prepare.outputs.tag }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/release-assets
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          ARCHIVE_SHA256: ${{ needs.prepare.outputs.archive_sha256 }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: >-
+          node scripts/release/cli.mjs publish --publish
+          --dir "$RUNNER_TEMP/release-assets"
+          --source-sha "$SOURCE_SHA" --version "$VERSION"
+          --archive-sha256 "$ARCHIVE_SHA256"
+          --repository "$GITHUB_REPOSITORY" --default-branch "$DEFAULT_BRANCH"

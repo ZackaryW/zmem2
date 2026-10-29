@@ -28,6 +28,9 @@ host or separately installed Rust service is required.
 
 ## Repository memory
 
+For checksummed source distributions and maintainer release operations, see the
+[source release guide](docs/releases.md).
+
 Commit annotations alongside normal commit prose:
 
 ```text
