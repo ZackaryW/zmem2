@@ -18,8 +18,8 @@ The selected source's `package.json`, both root version declarations in
 does not bump versions or rewrite mismatching metadata.
 
 Every release Node 24/26 job on macOS, Ubuntu, and Windows must pass dependency
-installation, TypeScript compilation with type checking, and tests. Formatting
-and package preparation run once on Ubuntu Node 24. The last inspected
+installation, TypeScript compilation with type checking, and the full test suite.
+Formatting and package preparation run once on Ubuntu Node 24. The last inspected
 pre-workflow CI run (`39867870570`, source `d20cc09c`) had failures on Ubuntu Node 24
 and both Windows jobs. Such failures block publication; they are not waived by a
 passing macOS run or by these release-tooling checks.

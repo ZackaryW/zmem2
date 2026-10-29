@@ -33,7 +33,7 @@ The selected source MUST resolve to the requested full commit SHA in the default
 - **THEN** the workflow rejects it without substituting a moving branch or another commit
 
 ### Requirement: Existing validation matrix gates publication
-Publication SHALL require successful dependency installation, TypeScript compilation with type checking, and tests for the selected source across Node 24 and 26 on macOS, Ubuntu, and Windows. Formatting checks and package preparation SHALL run once for that source on Ubuntu Node 24. Failed, cancelled, or skipped required validation MUST block publication.
+Publication SHALL require successful dependency installation, TypeScript compilation with type checking, and the full application test suite for the selected source across Node 24 and 26 on macOS, Ubuntu, and Windows. Formatting checks and package preparation SHALL run once for that source on Ubuntu Node 24. Failed, cancelled, or skipped required validation MUST block publication.
 
 #### Scenario: All required jobs pass
 - **WHEN** every required source-validation job succeeds for the selected commit
@@ -44,15 +44,15 @@ Publication SHALL require successful dependency installation, TypeScript compila
 - **THEN** no new release tag or published GitHub release is created by that run
 
 ### Requirement: Routine CI limits repeated validation
-Ordinary CI SHALL run on pushes to `main`, pull requests, and manual dispatch. Four jobs SHALL test Node 24 on macOS, Ubuntu, and Windows plus Node 26 on Ubuntu. Formatting, package preparation, and release-helper tests SHALL run once in the Ubuntu Node 24 job. Application tests SHALL compile TypeScript with type checking without a separate compiler pass.
+Ordinary CI SHALL run on pushes to `main`, pull requests, and manual dispatch. Ubuntu Node 24 SHALL run the full application suite. Windows/macOS Node 24 and Ubuntu Node 26 SHALL run CLI smoke tests covering startup, recall, and detached background completion. Both suites SHALL compile TypeScript with type checking. Formatting, package preparation, and release-helper tests SHALL run once in the Ubuntu Node 24 job.
 
 #### Scenario: Routine change
 - **WHEN** a push to `main`, a pull request update, or a manual ordinary test run is triggered
-- **THEN** four test jobs cover the supported operating systems and Node majors, and shared checks run once
+- **THEN** one full-suite job and three CLI smoke jobs cover the supported operating systems and Node majors, and shared checks run once
 
 #### Scenario: Release validation
 - **WHEN** the release workflow supplies the exact selected source SHA
-- **THEN** six test jobs validate every supported OS/runtime pair, with independently scoped concurrency
+- **THEN** six full-suite jobs validate every supported OS/runtime pair, with independently scoped concurrency
 
 ### Requirement: Routine cancellation preserves release validation
 Superseded routine runs for the same branch or pull request SHALL be cancelled. Reusable validation supplied with a release source SHA SHALL use a concurrency group specific to the caller run and SHALL NOT be cancelled by routine CI or another release invocation.

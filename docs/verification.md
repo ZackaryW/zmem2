@@ -57,9 +57,10 @@ unrelated commit/effect/diagnostic namespaces.
 
 OpenSpec task 9.4 remains unchecked because Linux/macOS lifecycle execution has
 not run in this Windows session. Docker's Linux daemon is unavailable here.
-Routine GitHub Actions CI tests Node 24 on Windows, Ubuntu, and macOS, plus Node 26
-on Ubuntu. Release validation tests both Node versions on all three operating
-systems. A prepared workflow is not evidence of a passing run.
+Routine GitHub Actions CI runs the full suite on Ubuntu Node 24, with CLI smoke
+tests on Windows/macOS Node 24 and Ubuntu Node 26. Release validation runs the full
+suite on both Node versions across all three operating systems. A prepared
+workflow is not evidence of a passing run.
 
 ## Review checkpoint
 

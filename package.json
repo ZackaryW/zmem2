@@ -26,6 +26,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
+    "test:smoke": "npm run build && node --test dist/tests/cli-entrypoint.test.js dist/tests/background-cli.test.js",
     "test:release": "node --test scripts/release/*.test.mjs",
     "start": "node dist/src/cli/main.js",
     "prepack": "npm run build",

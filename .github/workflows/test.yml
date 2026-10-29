@@ -37,8 +37,13 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run format:check
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.node == 24 }}
-      # npm test builds with tsc, including type checking, on every matrix entry.
-      - run: npm test
+      # Both suites build with tsc, including type checking, on every matrix entry.
+      - name: Full test suite
+        if: ${{ inputs.source_sha || (matrix.os == 'ubuntu-latest' && matrix.node == 24) }}
+        run: npm test
+      - name: CLI smoke tests
+        if: ${{ !inputs.source_sha && (matrix.os != 'ubuntu-latest' || matrix.node != 24) }}
+        run: npm run test:smoke
       - run: npm pack --ignore-scripts
         if: ${{ matrix.os == 'ubuntu-latest' && matrix.node == 24 }}
       - run: npm run test:release

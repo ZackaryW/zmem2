@@ -41,15 +41,29 @@ test('routine CI has four test jobs and release CI retains all six OS/runtime pa
   assert.equal(ci.jobs.test.strategy['fail-fast'], false);
   assert.equal(ci.jobs.test['continue-on-error'], undefined);
   const install = ci.jobs.test.steps.find((s) => s.run === 'npm ci --ignore-scripts');
-  const tests = ci.jobs.test.steps.find((s) => s.run === 'npm test');
   assert.ok(install);
-  assert.ok(tests);
   assert.equal(install.if, undefined);
-  assert.equal(tests.if, undefined);
   const checkout = ci.jobs.test.steps.find((s) => s.uses?.startsWith('actions/checkout'));
   assert.equal(checkout.with.ref, '${{ inputs.source_sha || github.sha }}');
   assert.equal(checkout.with['persist-credentials'], false);
   assert.equal(ci.permissions.contents, 'read');
+});
+
+test('routine CI runs the full suite once and CLI smoke elsewhere while releases always run full tests', () => {
+  const steps = workflow('test').jobs.test.steps;
+  assert.equal(
+    steps.find((s) => s.run === 'npm test').if,
+    "${{ inputs.source_sha || (matrix.os == 'ubuntu-latest' && matrix.node == 24) }}",
+  );
+  assert.equal(
+    steps.find((s) => s.run === 'npm run test:smoke').if,
+    "${{ !inputs.source_sha && (matrix.os != 'ubuntu-latest' || matrix.node != 24) }}",
+  );
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+  assert.equal(
+    pkg.scripts['test:smoke'],
+    'npm run build && node --test dist/tests/cli-entrypoint.test.js dist/tests/background-cli.test.js',
+  );
 });
 
 test('shared checks run once alongside Linux Node 24 tests', () => {
@@ -60,6 +74,7 @@ test('shared checks run once alongside Linux Node 24 tests', () => {
       'npm ci --ignore-scripts',
       'npm run format:check',
       'npm test',
+      'npm run test:smoke',
       'npm pack --ignore-scripts',
       'npm run test:release',
     ],
