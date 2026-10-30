@@ -4,6 +4,30 @@ zmem2 uses TypeScript/ES modules on Node 24 or 26. Git must be on PATH.
 Run `npm ci`, `npm run typecheck`, `npm test`, and `npm pack` from the project root.
 Tests use Node's built-in runner and isolated temporary Git repositories/user homes.
 
+`npm ci` runs `prepare` to compile the clean checkout. With lifecycle scripts
+enabled, use `npm ci` followed by `npm link`, or `npm install --global .` after
+dependency preparation, to expose `zmem`. These links depend on the checkout and
+its build output. With scripts disabled, use `npm ci --ignore-scripts` followed
+by `npm run build`. `prepack` also builds before ordinary `npm pack` operations.
+Producer CI builds explicitly and then packs with `--ignore-scripts`.
+
+A pinned direct Git installation requires npm 12.2.1 or later and can use
+`npm install --global --allow-git=root git+https://github.com/ZackaryW/zmem2.git#FULL_COMMIT_SHA`
+with lifecycle scripts enabled. It prepares source during installation and needs
+development dependencies for that build. Use `#main` instead of the full commit
+SHA to install the current main branch.
+
+The clean global Git regression failed with npm 11.20.0 and 11.21.1: npm's nested
+preparation inherited global mode and did not install the compiler in its clone.
+The same one-command install passed with npm 12.2.1; `--allow-git=root` explicitly
+allows the requested Git source under npm 12's source policy. The harness uses
+that tested npm version. Keep lifecycle scripts enabled for direct Git installation.
+
+The source-install harness exercises these paths in fresh temporary copies,
+including npm-generated launchers and an explicit build after scripts-disabled
+dependency installation. Run `node scripts/release/source-install.mjs .` with
+npm 12.2.1 or later. It never links into the user's global npm prefix.
+
 Routine GitHub Actions CI runs on pushes to `main`, pull requests, and manual
 dispatch. Ubuntu Node 24 runs the full application suite. Windows and macOS on
 Node 24, plus Ubuntu Node 26, run `npm run test:smoke`: five tests covering CLI

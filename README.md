@@ -10,19 +10,29 @@ extensions, with setup and recovery details linked only where needed.
 Agents should initialize a missing repository index when memory is needed,
 unless the user has explicitly disabled automatic bootstrap.
 
-## Build and install
+## Install and upgrade from Git
 
-Requires Node 24 or 26 and Git on PATH.
+Requires Node 24 or 26, npm 12.2.1 or later, and Git on PATH. Install from the
+latest source on `main` using npm as the installer:
 
 ```console
-npm ci
-npm test
-npm pack
-npm install --global ./zmem2-0.1.1.tgz
+npm install --global --allow-git=root git+https://github.com/ZackaryW/zmem2.git#main
 zmem --version
+zmem init .
 ```
 
-For development, replace `zmem` with `node dist/src/cli/main.js` after building.
+Run the same installation command to update from `main`. To pin a revision,
+replace `#main` with `#FULL_COMMIT_SHA`. npm prepares the Git source automatically;
+keep lifecycle scripts enabled and development dependencies available during
+installation. Ensure npm's global executable directory is on PATH.
+
+For development from a local checkout, run `npm ci` followed by `npm link`.
+Preparation builds the CLI automatically. If scripts are disabled, run
+`npm ci --ignore-scripts` and `npm run build` before linking. A development link
+depends on that checkout: removing its `dist` directory breaks the command.
+Restore it with `npm ci`, or reinstall directly from Git. No memory deletion or
+uninstall is needed. See [source setup details](docs/development.md).
+
 Use `--home PATH` or `ZMEM_HOME` for an isolated user data directory. No Python
 host or separately installed Rust service is required.
 
