@@ -12,16 +12,17 @@ unless the user has explicitly disabled automatic bootstrap.
 
 ## Install and upgrade from Git
 
-Requires Node 24 or 26, npm 12.2.1 or later, and Git on PATH. Install from the
-latest source on `main` using npm as the installer:
+Requires Node 24 or 26, npm, and Git on PATH. This command temporarily selects
+the tested npm 12.2.1 installer and installs the latest Git source on `main`:
 
 ```console
-npm install --global --allow-git=root git+https://github.com/ZackaryW/zmem2.git#main
+npm exec --yes --package=npm@12.2.1 -- npm install --global --allow-git=root git+https://github.com/ZackaryW/zmem2.git#main
 zmem --version
 zmem init .
 ```
 
-Run the same installation command to update from `main`. To pin a revision,
+Your globally installed npm version stays unchanged. Run the same command to
+update from `main`. To pin a revision,
 replace `#main` with `#FULL_COMMIT_SHA`. npm prepares the Git source automatically;
 keep lifecycle scripts enabled and development dependencies available during
 installation. Ensure npm's global executable directory is on PATH.
@@ -31,7 +32,7 @@ Preparation builds the CLI automatically. If scripts are disabled, run
 `npm ci --ignore-scripts` and `npm run build` before linking. A development link
 depends on that checkout: removing its `dist` directory breaks the command.
 Restore it with `npm ci`, or reinstall directly from Git. No memory deletion or
-uninstall is needed. See [source setup details](docs/development.md).
+uninstall is needed.
 
 Use `--home PATH` or `ZMEM_HOME` for an isolated user data directory. No Python
 host or separately installed Rust service is required.
@@ -212,5 +213,4 @@ automatically. Local generated indexes are environment-scoped beneath
 zmem/zmem-cache databases, runtimes, and Python extensions are not migrated or
 modified. Roll back by selecting the old installation and its unchanged data.
 
-See [development](docs/development.md) for source ownership and dependency choices.
 See [verification](docs/verification.md) for measured behavior and platform coverage.

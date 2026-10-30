@@ -5,17 +5,16 @@ import { pathToFileURL } from 'node:url';
 import { consumerEnv, launcher, npm, run, temporary } from './process.mjs';
 
 export function verifySourceInstall(input) {
-  const npmVersion = npm(['--version']).toString().trim();
-  const [major, minor, patch] = npmVersion.split('.').map(Number);
-  if (!(major > 12 || (major === 12 && (minor > 2 || (minor === 2 && patch >= 1)))))
-    throw new Error(
-      'Source-install verification requires npm 12.2.1 or later for direct global Git preparation.',
-    );
+  const hostNpmVersion = npm(['--version']).toString().trim();
+  const sourceNpm = (args, options) =>
+    npm(['exec', '--yes', '--package=npm@12.2.1', '--', 'npm', ...args], options);
   const temp = temporary('zmem source ');
   try {
     const source = join(temp.root, 'source');
     copySource(resolve(input), source);
     const env = consumerEnv(temp.root);
+    const npmVersion = sourceNpm(['--version'], { cwd: temp.root, env }).toString().trim();
+    assert.equal(npmVersion, '12.2.1', 'Source installation must use the selected npm');
     const version = JSON.parse(readFileSync(join(source, 'package.json'))).version;
     const check = (prefix) => {
       const options = { cwd: temp.root, env };
@@ -27,13 +26,13 @@ export function verifySourceInstall(input) {
     };
     assert.equal(existsSync(join(source, 'dist')), false);
     assert.equal(existsSync(join(source, 'node_modules')), false);
-    npm(['ci'], { cwd: source, env });
+    sourceNpm(['ci'], { cwd: source, env });
     assert.ok(existsSync(join(source, 'dist/src/cli/main.js')));
     const linked = join(temp.root, 'linked');
-    npm(['link'], { cwd: source, env: { ...env, npm_config_prefix: linked } });
+    sourceNpm(['link'], { cwd: source, env: { ...env, npm_config_prefix: linked } });
     check(linked);
     const local = join(temp.root, 'local');
-    npm(['install', '--global', '--prefix', local, source], { cwd: temp.root, env });
+    sourceNpm(['install', '--global', '--prefix', local, source], { cwd: temp.root, env });
     check(local);
 
     // A clean committed source snapshot must be sufficient for Git installation.
@@ -53,8 +52,7 @@ export function verifySourceInstall(input) {
     );
     const sha = git('rev-parse', 'HEAD').toString().trim();
     const gitPrefix = join(temp.root, 'git-install');
-    const npmMajor = Number(npm(['--version'], { env }).toString().split('.')[0]);
-    npm(
+    sourceNpm(
       [
         'install',
         '--global',
@@ -62,7 +60,7 @@ export function verifySourceInstall(input) {
         gitPrefix,
         `git+${pathToFileURL(gitSource).href}#${sha}`,
         '--foreground-scripts',
-        ...(npmMajor >= 12 ? ['--allow-git=root'] : []),
+        '--allow-git=root',
       ],
       { cwd: temp.root, env },
     );
@@ -71,9 +69,9 @@ export function verifySourceInstall(input) {
 
     const disabled = join(temp.root, 'disabled');
     copySource(input, disabled);
-    npm(['ci', '--ignore-scripts'], { cwd: disabled, env });
+    sourceNpm(['ci', '--ignore-scripts'], { cwd: disabled, env });
     assert.equal(existsSync(join(disabled, 'dist')), false);
-    npm(['run', 'build'], { cwd: disabled, env });
+    sourceNpm(['run', 'build'], { cwd: disabled, env });
     assert.deepEqual(
       JSON.parse(
         run(process.execPath, [join(disabled, 'dist/src/cli/main.js'), '--version'], {
@@ -86,6 +84,7 @@ export function verifySourceInstall(input) {
     return {
       sourceInstall: 'passed',
       npm: npmVersion,
+      hostNpm: hostNpmVersion,
       version,
       checkout: 'prepared',
       git: 'pinned-clean-source',
