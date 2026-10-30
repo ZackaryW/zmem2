@@ -29,6 +29,7 @@
     "test:smoke": "npm run build && node --test dist/tests/cli-entrypoint.test.js dist/tests/background-cli.test.js",
     "test:release": "node --test scripts/release/*.test.mjs",
     "start": "node dist/src/cli/main.js",
+    "prepare": "npm run build",
     "prepack": "npm run build",
     "format": "prettier --write src tests scripts README.md docs skills package.json tsconfig.json .github",
     "format:check": "prettier --check src tests scripts README.md docs skills package.json tsconfig.json .github",

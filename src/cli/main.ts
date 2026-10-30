@@ -107,7 +107,12 @@ export async function main(args = process.argv.slice(2)) {
     if (!Number.isFinite(n)) throw new MemoryError('invalid_input', `${name} must be numeric`);
     return n;
   };
-  if (v.version) return { product: 'zmem', version: '0.1.1' };
+  if (v.version)
+    return {
+      product: 'zmem',
+      version: JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'))
+        .version,
+    };
   if (v.help || !p.length) return help;
   const command = p[0]!;
   if (['jobs', 'backfill', 'service'].includes(command)) {
